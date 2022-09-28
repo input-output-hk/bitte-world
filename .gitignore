@@ -1,0 +1,23 @@
+/workbench
+
+# numtide/devshell
+.data
+
+# direnv/direnv + divnix/std
+.std
+.envrc.local
+
+# hashicorp/terraform
+.terraform
+config.tf.json
+*.plan
+
+# iog/bitte
+secrets/
+
+# nixos/nix
+result*
+
+# misc
+*.swp
+/.direnv
