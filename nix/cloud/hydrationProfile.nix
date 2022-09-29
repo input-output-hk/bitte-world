@@ -160,10 +160,10 @@ in {
             bitte-cells-patroni
             ;
 
-          inherit
-            (inputs.bitte-cells.tempo.alerts)
-            bitte-cells-tempo
-            ;
+          # inherit
+          #   (inputs.bitte-cells.tempo.alerts)
+          #   bitte-cells-tempo
+          #   ;
         }
         # Dashboard attrset
         {
@@ -193,10 +193,10 @@ in {
             bitte-cells-patroni
             ;
 
-          inherit
-            (inputs.bitte-cells.tempo.dashboards)
-            bitte-cells-tempo
-            ;
+          # inherit
+          #   (inputs.bitte-cells.tempo.dashboards)
+          #   bitte-cells-tempo
+          #   ;
         };
     };
 

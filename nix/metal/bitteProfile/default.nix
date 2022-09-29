@@ -31,8 +31,6 @@ in {
           bitte.profiles.client
           bitte.profiles.nomad-follower
           "${self.inputs.nixpkgs}/nixos/modules/profiles/headless.nix"
-          ./spongix-user.nix
-          ./podman.nix
           ({lib, ...}: {
             services.glusterfs.enable = lib.mkForce false;
 
@@ -73,7 +71,7 @@ in {
         #   client-$REGION-$INSTANCE_TYPE-$ASG_SUFFIX
       in
         lib.listToAttrs (lib.forEach [
-            (mkAsgs "eu-central-1" 3 "m5.8xlarge" 500 "testnet" "testnet" {withPatroni = true;} {})
+            (mkAsgs "eu-central-1" 3 "t3a.medium" 100 "testnet" "testnet" {withPatroni = true;} {})
             (mkAsgs "eu-central-1" 1 "t3a.medium" 100 "staging" "staging" {} {})
           ]
           (args: let

@@ -5,9 +5,11 @@
     n2c.url = "github:nlewo/nix2container";
     data-merge.url = "github:divnix/data-merge";
     # --- Bitte Stack ----------------------------------------------
-    bitte.url = "github:input-output-hk/bitte";
-    # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/bitte";
-    bitte-cells.url = "github:input-output-hk/bitte-cells";
+    # bitte.url = "github:input-output-hk/bitte";
+    bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/fix-bootstrap";
+    # bitte-cells.url = "github:input-output-hk/bitte-cells";
+    # bitte-cells.url = "github:input-output-hk/bitte-cells";
+    bitte-cells.url = "github:input-output-hk/bitte-cells/237d6680788c1cf35e319e689f859e83e3f85d7f";
     # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/bitte-cells";
     # --------------------------------------------------------------
     # --- Auxiliary Nixpkgs ----------------------------------------
