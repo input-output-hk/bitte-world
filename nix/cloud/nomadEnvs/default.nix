@@ -12,10 +12,10 @@ in {
     inherit
       (constants.patroni)
       # App constants
-
+      
       WALG_S3_PREFIX
       # Job mod constants
-
+      
       patroniMods
       ;
   in {
@@ -36,10 +36,10 @@ in {
     inherit
       (constants.tempo)
       # App constants
-
+      
       WALG_S3_PREFIX
       # Job mod constants
-
+      
       tempoMods
       ;
   in {

@@ -337,14 +337,17 @@
         "utils": "utils_11"
       },
       "locked": {
-        "lastModified": 1664473121,
-        "narHash": "sha256-JNipKWaiCgHeu0bznwpGmUJd86US8PiNnvC319ncoTw=",
-        "path": "/home/jlotoski/work/iohk/bitte-wt/fix-bootstrap",
-        "type": "path"
+        "lastModified": 1664550614,
+        "narHash": "sha256-Upi0/URoI/Bono/Hh3AUEpKzJ2OOyzgz6ubqKL+gUEQ=",
+        "owner": "input-output-hk",
+        "repo": "bitte",
+        "rev": "3d8c3d7cd6a743d527adf1479ae70032c855858b",
+        "type": "github"
       },
       "original": {
-        "path": "/home/jlotoski/work/iohk/bitte-wt/fix-bootstrap",
-        "type": "path"
+        "owner": "input-output-hk",
+        "repo": "bitte",
+        "type": "github"
       }
     },
     "bitte-cells": {
