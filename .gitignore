@@ -21,3 +21,13 @@ result*
 # misc
 *.swp
 /.direnv
+
+# nixago: ignore-linked-files
+.editorconfig
+adrgen.config.yml
+lefthook.yml
+treefmt.toml
+.conform.yaml
+
+# nixago-auto-created: mdbook-build-folder
+book/**

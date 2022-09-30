@@ -71,8 +71,8 @@ in {
         #   client-$REGION-$INSTANCE_TYPE-$ASG_SUFFIX
       in
         lib.listToAttrs (lib.forEach [
-            (mkAsgs "eu-central-1" 3 "t3a.medium" 100 "testnet" "testnet" {withPatroni = true;} {})
-            (mkAsgs "eu-central-1" 1 "t3a.medium" 100 "staging" "staging" {} {})
+            (mkAsgs "eu-central-1" 3 "t3a.medium" 100 "patroni" "patroni" {withPatroni = true;} {})
+            (mkAsgs "eu-central-1" 1 "t3a.medium" 100 "tempo" "tempo" {} {})
           ]
           (args: let
             attrs =

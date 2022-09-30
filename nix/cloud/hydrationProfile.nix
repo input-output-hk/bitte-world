@@ -13,7 +13,8 @@ in {
     ...
   }: {
     imports = [
-      (bitte-cells.patroni.hydrationProfiles.hydrate-cluster ["testnet"])
+      (bitte-cells.patroni.hydrationProfiles.hydrate-cluster ["patroni"])
+      (bitte-cells.tempo.hydrationProfiles.hydrate-cluster ["tempo"])
     ];
 
     # NixOS-level hydration
@@ -33,7 +34,8 @@ in {
 
     services = {
       nomad.namespaces = {
-        testnet = {description = "Bitte testnet";};
+        patroni = {description = "patroni";};
+        tempo = {description = "tempo";};
       };
     };
 
@@ -160,10 +162,10 @@ in {
             bitte-cells-patroni
             ;
 
-          # inherit
-          #   (inputs.bitte-cells.tempo.alerts)
-          #   bitte-cells-tempo
-          #   ;
+          inherit
+            (inputs.bitte-cells.tempo.alerts)
+            bitte-cells-tempo
+            ;
         }
         # Dashboard attrset
         {
@@ -193,10 +195,12 @@ in {
             bitte-cells-patroni
             ;
 
-          # inherit
-          #   (inputs.bitte-cells.tempo.dashboards)
-          #   bitte-cells-tempo
-          #   ;
+          inherit
+            (inputs.bitte-cells.tempo.dashboards)
+            bitte-cells-tempo-operational
+            bitte-cells-tempo-reads
+            bitte-cells-tempo-writes
+            ;
         };
     };
 

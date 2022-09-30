@@ -7,9 +7,8 @@
     # --- Bitte Stack ----------------------------------------------
     # bitte.url = "github:input-output-hk/bitte";
     bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/fix-bootstrap";
-    # bitte-cells.url = "github:input-output-hk/bitte-cells";
-    # bitte-cells.url = "github:input-output-hk/bitte-cells";
-    bitte-cells.url = "github:input-output-hk/bitte-cells/237d6680788c1cf35e319e689f859e83e3f85d7f";
+    bitte-cells.url = "github:input-output-hk/bitte-cells";
+    # bitte-cells.url = "github:input-output-hk/bitte-cells/237d6680788c1cf35e319e689f859e83e3f85d7f";
     # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/bitte-cells";
     # --------------------------------------------------------------
     # --- Auxiliary Nixpkgs ----------------------------------------
@@ -36,11 +35,12 @@
       inherit inputs;
       cellsFrom = ./nix;
       # debug = ["cells" "cloud" "nomadEnvs"];
-      organelles = [
+      cellBlocks = [
         (inputs.std.data "nomadEnvs")
         (inputs.std.data "constants")
         (inputs.std.data "alerts")
         (inputs.std.data "dashboards")
+        (inputs.std.nixago "nixago")
         (inputs.std.runnables "entrypoints")
         (inputs.std.functions "bitteProfile")
         (inputs.std.functions "oci-images")
@@ -72,7 +72,8 @@
         }
     )
     {
-      testnet = bitte.lib.mkNomadJobs "testnet" nomadEnvs;
+      patroni = bitte.lib.mkNomadJobs "patroni" nomadEnvs;
+      tempo = bitte.lib.mkNomadJobs "tempo" nomadEnvs;
     }
     (inputs.tullia.fromStd {
       actions = inputs.std.harvest inputs.self ["cloud" "actions"];
