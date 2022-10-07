@@ -19,6 +19,7 @@ in {
     securityGroupRules = bittelib.securityGroupRules config;
   in {
     secrets.encryptedRoot = ./encrypted;
+    age.encryptedRoot = ./encrypted-prem;
 
     cluster = {
       s3CachePubKey = lib.fileContents ./encrypted/nix-public-key-file;
@@ -103,7 +104,7 @@ in {
           in
             lib.nameValuePair asgName attrs'));
 
-      instances = {
+      coreNodes = {
         core-1 = {
           instanceType = "t3a.xlarge";
           privateIP = "172.16.0.10";
@@ -183,6 +184,17 @@ in {
 
           securityGroupRules = {
             inherit (securityGroupRules) internet internal ssh http https routing;
+          };
+        };
+      };
+
+      awsExtNodes = let
+        project = "benchmarking";
+      in {
+        test = {
+          privateIP = "update";
+          equinix = {
+            inherit project;
           };
         };
       };

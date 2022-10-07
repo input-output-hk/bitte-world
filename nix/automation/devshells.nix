@@ -3,7 +3,7 @@
   cell,
 }: let
   inherit (inputs.std) std;
-  inherit (inputs) capsules bitte-cells bitte nixpkgs;
+  inherit (inputs) capsules bitte-cells bitte deploy-rs nixpkgs;
   inherit (inputs.cells) cardano;
 
   # FIXME: this is a work around just to get access
@@ -64,6 +64,7 @@ in {
       bitteWorld = withCategory "bitte-world";
     in
       with nixpkgs; [
+        (bitteWorld {package = deploy-rs.defaultPackage;})
         (bitteWorld {package = httpie;})
       ];
   };

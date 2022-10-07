@@ -22,6 +22,7 @@ in {
 
     cluster = {
       name = "bitte-world";
+      infraType = "awsExt";
 
       adminNames = ["john.lotoski"];
       developerGithubNames = [];
