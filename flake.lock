@@ -337,11 +337,11 @@
         "utils": "utils_11"
       },
       "locked": {
-        "lastModified": 1665186785,
-        "narHash": "sha256-Ls8U42pXeIjkErrdT+W0W6H/ShlOohFqnIL+7ChQNlQ=",
+        "lastModified": 1665188509,
+        "narHash": "sha256-5EHd/kwjNzO+zRJEfTpc12r0Nh1YDCDZoTbhlamJ/Yg=",
         "owner": "input-output-hk",
         "repo": "bitte",
-        "rev": "183a962fd13639ece72cca7a0206dbbdecd4ba9f",
+        "rev": "6d808f29030f1bc564ab6cca125f91a63b18c659",
         "type": "github"
       },
       "original": {
