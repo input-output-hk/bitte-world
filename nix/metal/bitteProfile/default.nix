@@ -186,16 +186,62 @@ in {
             inherit (securityGroupRules) internet internal ssh http https routing;
           };
         };
+
+        zt = {
+          instanceType = "t3a.small";
+          privateIP = "172.16.0.30";
+          subnet = cluster.vpc.subnets.core-1;
+          volumeSize = 100;
+
+          modules = [
+            (bitte + /profiles/common.nix)
+            ./zt.nix
+            ./zt-tunneler.nix
+            ({lib, ...}: {
+              services.resolved.enable = lib.mkForce false;
+            })
+          ];
+
+          securityGroupRules = {
+            inherit (securityGroupRules) internet internal ssh;
+          };
+        };
       };
 
       awsExtNodes = let
+        deployType = "awsExt";
         project = "benchmarking";
       in {
         test = {
-          privateIP = "update";
-          equinix = {
-            inherit project;
-          };
+          inherit deployType;
+
+          # role = "default";
+          role = "client";
+
+          # Should be inherited properly from coreNodeType
+          # datacenter = "eu-central-1";
+          # domain = config.cluster.domain;
+
+          node_class = "equinix";
+          primaryInterface = "bond0";
+
+          equinix.project = project;
+
+          # 1) Deploy
+          # 2) Record privateIP (not assignable during prov)
+          # 3) TODO: ZFS client services (only assume aws clients, not awsExt clients are ZFS)
+          # 4) Deploy post prov as there is a dep on privateIP being corrected first
+          privateIP = "145.40.96.133";
+
+          modules = [
+            (bitte + /profiles/client.nix)
+            ./equinix/test/configuration.nix
+            ./zt-tunneler.nix
+            {
+              # Required due to Equinix networkd default and wireless dhcp default
+              networking.useDHCP = false;
+            }
+          ];
         };
       };
     };
