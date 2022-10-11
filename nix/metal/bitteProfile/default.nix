@@ -195,8 +195,9 @@ in {
 
           modules = [
             (bitte + /profiles/common.nix)
-            ./zt.nix
-            ./zt-tunneler.nix
+            ./zt-controller.nix
+            # ./zt-edge-router.nix
+            # ./zt-tunneler.nix
             ({lib, ...}: {
               services.resolved.enable = lib.mkForce false;
             })
