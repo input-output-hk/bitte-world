@@ -1,18 +1,22 @@
 {
   pkgs,
   inputs,
+  lib,
   ...
 }: let
-  ziti-edge-tunnel = inputs.openziti.packages.x86_64-linux.ziti-edge-tunnel;
+  ziti-edge-tunnel = inputs.openziti.packages.x86_64-linux.ziti-edge-tunnel_latest;
 in {
   # OpenZiti CLI package
-  environment.systemPackages = [ziti-edge-tunnel];
+  environment.systemPackages = [
+    step-cli
+    ziti-edge-tunnel
+  ];
 
   # OpenZiti DNS integration
   services.resolved.enable = true;
 
   # OpenZiti Edge Tunnel Service
-  systemd.services.ziti-edge-tunnel = {
+  systemd.services.openziti-edge-tunnel = {
     wantedBy = ["multi-user.target"];
 
     startLimitIntervalSec = 0;

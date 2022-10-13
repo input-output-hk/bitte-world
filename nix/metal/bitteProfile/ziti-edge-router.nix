@@ -8,8 +8,9 @@
   inherit (lib) mkIf mkOption;
   inherit (lib.types) bool;
 
-  ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti;
-  ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions;
+  ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti_latest;
+  ziti-router-pkg = inputs.openziti.packages.x86_64-linux.ziti-router_latest;
+  ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions_latest;
 
   zitiController = "ziti-controller";
   zitiEdgeController = "ziti-edge-controller";
@@ -108,6 +109,7 @@ in {
     };
     enableBashIntegration = mkOption {
       type = bool;
+      # Defaults to false to avoid an auto-conflict when controller and router are on the same host
       default = false;
       description = ''
         Enable integration of OpenZiti bash completions and sourcing of the Ziti environment.
@@ -120,18 +122,19 @@ in {
 
   config = {
     # OpenZiti CLI package
-    environment.systemPackages = [ziti-cli-functions ziti-pkg];
+    environment.systemPackages = [
+      step-cli
+      ziti-cli-functions
+      ziti-pkg
+      ziti-router-pkg
+    ];
 
     programs.bash.interactiveShellInit = mkIf cfg.enableBashIntegration ''
-      # if command -v ziti >/dev/null; then
-      #   source <(${ziti-pkg}/bin/ziti completion bash)
-      # fi
-
-      # [ -f ${zitiRouterHome}/${zitiNetwork}.env ] && source ${zitiRouterHome}/${zitiNetwork}.env
+      [ -f ${zitiRouterHome}/${zitiNetwork}.env ] && source ${zitiRouterHome}/${zitiNetwork}.env
     '';
 
     # OpenZiti DNS integration
-    services.resolved.enable = lib.mkOverride 1 true;
+    services.resolved.enable = true;
 
     # OpenZiti self hostname resolution
     networking.hosts = {
@@ -169,7 +172,7 @@ in {
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
             name = "${zitiRouter}-preScript.sh";
-            runtimeInputs = with pkgs; [dnsutils fd ziti-pkg];
+            runtimeInputs = with pkgs; [dnsutils fd ziti-pkg ziti-router-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
                 # shellcheck disable=SC1091
@@ -182,9 +185,7 @@ in {
                 # Link the nix pkgs openziti bins to the nix store path.
                 # The functions refer to these
                 ln -sf ${ziti-pkg}/bin/ziti "$ZITI_BIN_DIR"/ziti
-                ln -sf ${ziti-pkg}/bin/ziti-controller "$ZITI_BIN_DIR"/ziti-controller
                 ln -sf ${ziti-pkg}/bin/ziti-router "$ZITI_BIN_DIR"/ziti-router
-                ln -sf ${ziti-pkg}/bin/ziti-tunnel "$ZITI_BIN_DIR"/ziti-tunnel
 
                 # Add this routers public IP to the PoC pki
                 ZITI_EDGE_ROUTER_IP_OVERRIDE=$(dig +short myip.opendns.com @resolver1.opendns.com);
@@ -246,7 +247,7 @@ in {
           script = pkgs.writeShellApplication {
             name = zitiRouter;
             text = ''
-              exec ${ziti-pkg}/bin/ziti-router run ${routerConfigFile}
+              exec ${ziti-router-pkg}/bin/ziti-router run ${routerConfigFile}
             '';
           };
         in "${script}/bin/${zitiRouter}";

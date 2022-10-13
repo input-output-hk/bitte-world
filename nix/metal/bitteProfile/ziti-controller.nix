@@ -8,8 +8,9 @@
   inherit (lib) mkIf mkOption;
   inherit (lib.types) bool;
 
-  ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti;
-  ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions;
+  ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti_latest;
+  ziti-controller-pkg = inputs.openziti.packages.x86_64-linux.ziti-controller_latest;
+  ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions_latest;
 
   zitiController = "ziti-controller";
   zitiControllerHome = "/var/lib/${zitiController}";
@@ -269,14 +270,15 @@ in {
 
   config = {
     # OpenZiti CLI package
-    environment.systemPackages = [ziti-cli-functions ziti-pkg];
+    environment.systemPackages = [
+      step-cli
+      ziti-cli-functions
+      ziti-controller-pkg
+      ziti-pkg
+    ];
 
     programs.bash.interactiveShellInit = mkIf cfg.enableBashIntegration ''
-      # if command -v ziti >/dev/null; then
-      #   source <(${ziti-pkg}/bin/ziti completion bash)
-      # fi
-
-      # [ -f ${zitiControllerHome}/${zitiNetwork}.env ] && source ${zitiControllerHome}/${zitiNetwork}.env
+      [ -f ${zitiControllerHome}/${zitiNetwork}.env ] && source ${zitiControllerHome}/${zitiNetwork}.env
     '';
 
     # OpenZiti DNS integration
@@ -315,7 +317,7 @@ in {
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
             name = "${zitiController}-preScript.sh";
-            runtimeInputs = with pkgs; [ziti-pkg];
+            runtimeInputs = with pkgs; [ziti-pkg ziti-controller-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
                 # shellcheck disable=SC1091
@@ -328,8 +330,6 @@ in {
                 # The functions refer to these
                 ln -sf ${ziti-pkg}/bin/ziti "$ZITI_BIN_ROOT"/ziti
                 ln -sf ${ziti-pkg}/bin/ziti-controller "$ZITI_BIN_ROOT"/ziti-controller
-                ln -sf ${ziti-pkg}/bin/ziti-router "$ZITI_BIN_ROOT"/ziti-router
-                ln -sf ${ziti-pkg}/bin/ziti-tunnel "$ZITI_BIN_ROOT"/ziti-tunnel
 
                 # Create PoC controller pki
                 createPki
@@ -352,7 +352,7 @@ in {
           script = pkgs.writeShellApplication {
             name = zitiController;
             text = ''
-              exec ${ziti-pkg}/bin/${zitiController} run ${controllerConfigFile}
+              exec ${ziti-controller-pkg}/bin/${zitiController} run ${controllerConfigFile}
             '';
           };
         in "${script}/bin/${zitiController}";

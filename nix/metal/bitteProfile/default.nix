@@ -195,13 +195,13 @@ in {
 
           modules = [
             (bitte + /profiles/common.nix)
-            ./zt-controller.nix
-            ./zt-edge-router.nix
+            ./ziti-controller.nix
+            ./ziti-edge-router.nix
             ./ziti-console.nix
-            # ./zt-tunneler.nix
-            ({lib, ...}: {
-              services.resolved.enable = lib.mkForce false;
-            })
+            # ./ziti-tunneler.nix
+            # ({lib, ...}: {
+            #   services.resolved.enable = lib.mkForce false;
+            # })
           ];
 
           securityGroupRules = {
