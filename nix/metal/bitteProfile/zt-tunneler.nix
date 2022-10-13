@@ -1,9 +1,12 @@
-{pkgs, ...}: let
-  ziti-flake = builtins.getFlake "github:johnalotoski/openziti-bins/3019acfba44d6048238fbc40264ed3e9f88c3e50";
-  ziti-edge-tunnel-pkg = ziti-flake.packages.x86_64-linux.ziti-edge-tunnel;
+{
+  pkgs,
+  inputs,
+  ...
+}: let
+  ziti-edge-tunnel = inputs.openziti.packages.x86_64-linux.ziti-edge-tunnel;
 in {
   # OpenZiti CLI package
-  environment.systemPackages = [ziti-edge-tunnel-pkg];
+  environment.systemPackages = [ziti-edge-tunnel];
 
   # OpenZiti DNS integration
   services.resolved.enable = true;
@@ -29,7 +32,7 @@ in {
         script = pkgs.writeShellApplication {
           name = "ziti-edge-tunnel";
           text = ''
-            exec ${ziti-edge-tunnel-pkg}/bin/ziti-edge-tunnel run \
+            exec ${ziti-edge-tunnel}/bin/ziti-edge-tunnel run \
               --identity-dir identity \
               --verbose 3 \
               --refresh 10 \

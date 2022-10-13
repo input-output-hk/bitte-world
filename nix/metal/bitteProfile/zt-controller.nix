@@ -4,13 +4,20 @@
   config,
   ...
 }: let
-  ziti-flake = builtins.getFlake "github:johnalotoski/openziti-bins/3019acfba44d6048238fbc40264ed3e9f88c3e50";
-  ziti-pkg = ziti-flake.packages.x86_64-linux.ziti;
-  ziti-cli-functions = inputs.self.x86_64-linux.openziti.packages.ziti-cli-functions;
+  inherit (pkgs) lib;
+  inherit (lib) mkIf mkOption;
+  inherit (lib.types) bool;
 
-  zitiHome = "/var/lib/ziti-controller";
+  ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti;
+  ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions;
+
+  zitiController = "ziti-controller";
+  zitiControllerHome = "/var/lib/${zitiController}";
   zitiNetwork = "${config.cluster.name}-zt";
-  controllerConfigFile = builtins.toFile "ziti-edge-controller.yaml" ''
+  zitiEdgeController = "ziti-edge-controller";
+  zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
+
+  controllerConfigFile = builtins.toFile "${zitiEdgeController}.yaml" ''
     # Primary ref:     https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/config_templates/controller.yml
     #   * The primary ref generates the quickstart controller configs
     # Secondary ref:   https://github.com/openziti/ziti/blob/release-next/etc/ctrl.with.edge.yml
@@ -25,13 +32,13 @@
     #  memory:
     #    path: ctrl.memprof
 
-    db:                     "/var/lib/ziti-controller/db/ctrl.db"
+    db:                     "${zitiControllerHome}/db/ctrl.db"
 
     identity:
-      cert:                 "/var/lib/ziti-controller/pki/ziti-controller-intermediate/certs/ziti-controller-client.cert"
-      server_cert:          "/var/lib/ziti-controller/pki/ziti-controller-intermediate/certs/ziti-controller-server.chain.pem"
-      key:                  "/var/lib/ziti-controller/pki/ziti-controller-intermediate/keys/ziti-controller-server.key"
-      ca:                   "/var/lib/ziti-controller/pki/cas.pem"
+      cert:                 "${zitiControllerHome}/pki/${zitiController}-intermediate/certs/${zitiController}-client.cert"
+      server_cert:          "${zitiControllerHome}/pki/${zitiController}-intermediate/certs/${zitiController}-server.chain.pem"
+      key:                  "${zitiControllerHome}/pki/${zitiController}-intermediate/keys/${zitiController}-server.key"
+      ca:                   "${zitiControllerHome}/pki/cas.pem"
 
     # Network Configuration
     #
@@ -143,7 +150,7 @@
         # address - required
         # The default address (host:port) to use for enrollment for the Client API. This value must match one of the addresses
         # defined in this Controller.WebListener.'s bindPoints.
-        address: ziti-edge-controller:1280
+        address: ${zitiEdgeController}:1280
       # This section is used to define option that are used during enrollment of Edge Routers, Ziti Edge Identities.
       enrollment:
         # signingCert - required
@@ -151,8 +158,8 @@
         # a signing certificate from the PKI that the Ziti environment is using to sign certificates. The signingCert.cert
         # will be added to the /.well-known CA store that is used to bootstrap trust with the Ziti Controller.
         signingCert:
-          cert: /var/lib/ziti-controller/pki/${zitiNetwork}-signing-intermediate/certs/${zitiNetwork}-signing-intermediate.cert
-          key:  /var/lib/ziti-controller/pki/${zitiNetwork}-signing-intermediate/keys/${zitiNetwork}-signing-intermediate.key
+          cert: ${zitiControllerHome}/pki/${zitiNetwork}-signing-intermediate/certs/${zitiNetwork}-signing-intermediate.cert
+          key:  ${zitiControllerHome}/pki/${zitiNetwork}-signing-intermediate/keys/${zitiNetwork}-signing-intermediate.key
         # edgeIdentity - optional
         # A section for identity enrollment specific settings
         edgeIdentity:
@@ -187,14 +194,14 @@
             # address - required
             # The public address that external incoming requests will be able to resolve. Used in request processing and
             # response content that requires full host:port/path addresses.
-            address: ziti-edge-controller:1280
+            address: ${zitiEdgeController}:1280
         # identity - optional
         # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
         identity:
-          ca:          "/var/lib/ziti-controller/pki/ziti-edge-controller-intermediate/certs/ziti-edge-controller-intermediate.cert"
-          key:         "/var/lib/ziti-controller/pki/ziti-edge-controller-intermediate/keys/ziti-edge-controller-server.key"
-          server_cert: "/var/lib/ziti-controller/pki/ziti-edge-controller-intermediate/certs/ziti-edge-controller-server.chain.pem"
-          cert:        "/var/lib/ziti-controller/pki/ziti-edge-controller-intermediate/certs/ziti-edge-controller-client.cert"
+          ca:          "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-intermediate.cert"
+          key:         "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/keys/${zitiEdgeController}-server.key"
+          server_cert: "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-server.chain.pem"
+          cert:        "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-client.cert"
         # options - optional
         # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
         # used for all http servers started by the current webListener.
@@ -237,128 +244,151 @@
           - binding: edge-client
             options: { }
   '';
+
+  cfg = config.services.openziti-controller;
 in {
-  # OpenZiti CLI package
-  environment.systemPackages = [ziti-cli-functions ziti-pkg];
+  options.services.openziti-controller = {
+    enable = mkOption {
+      type = bool;
+      default = true;
+      description = ''
+        Enable the OpenZiti controller service.
+      '';
+    };
+    enableBashIntegration = mkOption {
+      type = bool;
+      default = true;
+      description = ''
+        Enable integration of OpenZiti bash completions and sourcing of the Ziti environment.
 
-  programs.bash.interactiveShellInit = ''
-    if command -v ziti >/dev/null; then
-      source <(${ziti-pkg}/bin/ziti completion bash)
-    fi
-
-    [ -f ${zitiHome}/${zitiNetwork}.env ] && source ${zitiHome}/${zitiNetwork}.env
-  '';
-
-  # OpenZiti DNS integration
-  services.resolved.enable = true;
-
-  # OpenZiti self hostname resolution
-  networking.hosts = {
-    "127.0.0.1" = ["ziti-edge-controller"];
+        NOTE: If multiple OpenZiti services are running on one host, the bash integration
+              should be enabled for only one of the services.
+      '';
+    };
   };
 
-  # OpenZiti Edge Tunnel Service
-  systemd.services.ziti-controller = {
-    wantedBy = ["multi-user.target"];
+  config = {
+    # OpenZiti CLI package
+    environment.systemPackages = [ziti-cli-functions ziti-pkg];
 
-    startLimitIntervalSec = 0;
-    startLimitBurst = 0;
+    programs.bash.interactiveShellInit = mkIf cfg.enableBashIntegration ''
+      # if command -v ziti >/dev/null; then
+      #   source <(${ziti-pkg}/bin/ziti completion bash)
+      # fi
 
-    # path = with pkgs; [gnugrep gnused iproute2];
+      # [ -f ${zitiControllerHome}/${zitiNetwork}.env ] && source ${zitiControllerHome}/${zitiNetwork}.env
+    '';
 
-    environment = let
-      zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
-    in {
-      HOME = "/var/lib/ziti-controller";
-      ZITI_BIN_DIR = "/var/lib/ziti-controller/ziti-bin";
-      ZITI_CONTROLLER_RAWNAME = "ziti-controller";
-      ZITI_EDGE_CONTROLLER_RAWNAME = "ziti-edge-controller";
-      ZITI_EDGE_ROUTER_HOSTNAME = zitiEdgeRouterRawName;
-      ZITI_EDGE_ROUTER_PORT = "3022";
-      ZITI_EDGE_ROUTER_RAWNAME = zitiEdgeRouterRawName;
-      ZITI_EDGE_ROUTER_ROLES = zitiEdgeRouterRawName;
-      ZITI_HOME = "/var/lib/ziti-controller";
-      ZITI_NETWORK = zitiNetwork;
+    # OpenZiti DNS integration
+    services.resolved.enable = true;
+
+    # OpenZiti self hostname resolution
+    networking.hosts = {
+      "127.0.0.1" = [zitiController zitiEdgeController];
     };
 
-    serviceConfig = {
-      Restart = "always";
-      RestartSec = 5;
-      StateDirectory = "ziti-controller";
-      WorkingDirectory = "/var/lib/ziti-controller";
+    # OpenZiti Controller Service
+    systemd.services.openziti-controller = {
+      wantedBy = ["multi-user.target"];
 
-      ExecStartPre = let
-        preScript = pkgs.writeShellApplication {
-          name = "ziti-controller-preScript.sh";
-          runtimeInputs = with pkgs; [ziti-pkg];
-          text = ''
-            if ! [ -f .bootstrap-pre-complete ]; then
-              # shellcheck disable=SC1091
-              source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
+      startLimitIntervalSec = 0;
+      startLimitBurst = 0;
 
-              # Generate the initial ziti controller environment vars
-              generateEnvFile
+      environment = {
+        HOME = zitiControllerHome;
+        ZITI_BIN_DIR = "${zitiControllerHome}/ziti-bin";
+        ZITI_CONTROLLER_RAWNAME = zitiController;
+        ZITI_EDGE_CONTROLLER_RAWNAME = zitiEdgeController;
+        ZITI_EDGE_ROUTER_HOSTNAME = zitiEdgeRouterRawName;
+        ZITI_EDGE_ROUTER_PORT = "3022";
+        ZITI_EDGE_ROUTER_RAWNAME = zitiEdgeRouterRawName;
+        ZITI_HOME = zitiControllerHome;
+        ZITI_NETWORK = zitiNetwork;
+      };
 
-              # Link the nix pkgs openziti bins to the nix store path.
-              # The functions refer to these
-              ln -sf ${ziti-pkg}/bin/ziti "$ZITI_BIN_ROOT"/ziti
-              ln -sf ${ziti-pkg}/bin/ziti-controller "$ZITI_BIN_ROOT"/ziti-controller
-              ln -sf ${ziti-pkg}/bin/ziti-router "$ZITI_BIN_ROOT"/ziti-router
-              ln -sf ${ziti-pkg}/bin/ziti-tunnel "$ZITI_BIN_ROOT"/ziti-tunnel
+      serviceConfig = {
+        Restart = "always";
+        RestartSec = 5;
+        StateDirectory = zitiController;
+        WorkingDirectory = zitiControllerHome;
 
-              # Create PoC pki
-              createPki
+        ExecStartPre = let
+          preScript = pkgs.writeShellApplication {
+            name = "${zitiController}-preScript.sh";
+            runtimeInputs = with pkgs; [ziti-pkg];
+            text = ''
+              if ! [ -f .bootstrap-pre-complete ]; then
+                # shellcheck disable=SC1091
+                source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
 
-              # Finish the cert setup (taken from createControllerConfig fn)
-              cat "$ZITI_CTRL_IDENTITY_SERVER_CERT" > "$ZITI_CTRL_IDENTITY_CA"
-              cat "$ZITI_SIGNING_CERT" >> "$ZITI_CTRL_IDENTITY_CA"
-              echo -e "wrote CA file to: $ZITI_CTRL_IDENTITY_CA"
+                # Generate the initial ziti controller environment vars
+                generateEnvFile
 
-              # Initialize the database with the admin user:
-              "$ZITI_BIN_DIR/ziti-controller" edge init ${controllerConfigFile} -u "$ZITI_USER" -p "$ZITI_PWD"
+                # Link the nix pkgs openziti bins to the nix store path.
+                # The functions refer to these
+                ln -sf ${ziti-pkg}/bin/ziti "$ZITI_BIN_ROOT"/ziti
+                ln -sf ${ziti-pkg}/bin/ziti-controller "$ZITI_BIN_ROOT"/ziti-controller
+                ln -sf ${ziti-pkg}/bin/ziti-router "$ZITI_BIN_ROOT"/ziti-router
+                ln -sf ${ziti-pkg}/bin/ziti-tunnel "$ZITI_BIN_ROOT"/ziti-tunnel
 
-              touch .bootstrap-pre-complete
-            fi
-          '';
-        };
-      in "${preScript}/bin/ziti-controller-preScript.sh";
+                # Create PoC controller pki
+                createPki
 
-      ExecStart = let
-        script = pkgs.writeShellApplication {
-          name = "ziti-controller";
-          text = ''
-            exec ${ziti-pkg}/bin/ziti-controller run ${controllerConfigFile}
-          '';
-        };
-      in "${script}/bin/ziti-controller";
+                # Finish the cert setup (taken from createControllerConfig fn)
+                cat "$ZITI_CTRL_IDENTITY_SERVER_CERT" > "$ZITI_CTRL_IDENTITY_CA"
+                cat "$ZITI_SIGNING_CERT" >> "$ZITI_CTRL_IDENTITY_CA"
+                echo -e "wrote CA file to: $ZITI_CTRL_IDENTITY_CA"
 
-      ExecStartPost = let
-        postScript = pkgs.writeShellApplication {
-          name = "ziti-controller-postScript.sh";
-          runtimeInputs = with pkgs; [curl ziti-pkg];
-          text = ''
-            if ! [ -f .bootstrap-post-complete ]; then
-              # shellcheck disable=SC1091
-              source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
+                # Initialize the database with the admin user:
+                ziti-controller edge init ${controllerConfigFile} -u "$ZITI_USER" -p "$ZITI_PWD"
 
-              # shellcheck disable=SC1090
-              source "$ZITI_HOME/$ZITI_NETWORK.env"
+                touch .bootstrap-pre-complete
+              fi
+            '';
+          };
+        in "${preScript}/bin/${zitiController}-preScript.sh";
 
-              while true; do
-                echo "waiting for https://$ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
-                sleep 2
-                curl -s -o /dev/null --fail -k "https://$ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT" && break
-              done
+        ExecStart = let
+          script = pkgs.writeShellApplication {
+            name = zitiController;
+            text = ''
+              exec ${ziti-pkg}/bin/${zitiController} run ${controllerConfigFile}
+            '';
+          };
+        in "${script}/bin/${zitiController}";
 
-              zitiLogin &> /dev/null
-              ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
-              ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
+        ExecStartPost = let
+          postScript = pkgs.writeShellApplication {
+            name = "${zitiController}-postScript.sh";
+            runtimeInputs = with pkgs; [curl ziti-pkg];
+            text = ''
+              if ! [ -f .bootstrap-post-complete ]; then
+                # shellcheck disable=SC1091
+                source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
 
-              touch .bootstrap-post-complete
-            fi
-          '';
-        };
-      in "${postScript}/bin/ziti-controller-postScript.sh";
+                # shellcheck disable=SC1090
+                source "$ZITI_HOME/$ZITI_NETWORK.env"
+
+                while [[ "$(curl -w "%{http_code}" -m 1 -s -k -o /dev/null https://"$ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"/version)" != "200" ]]; do
+                  echo "waiting for https://$ZITI_EDGE_CTRL_ADVERTISED_HOST_PORT"
+                  sleep 3
+                done
+
+                zitiLogin &> /dev/null
+                ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
+                ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
+
+                # Tmp workaround to share required creds for PoC -- use another mechanism; ex: vault
+                mkdir -p /run/keys/ziti
+                echo "$ZITI_USER" > /run/keys/ziti/ziti-user
+                echo "$ZITI_PWD" > /run/keys/ziti/ziti-pwd
+
+                touch .bootstrap-post-complete
+              fi
+            '';
+          };
+        in "${postScript}/bin/${zitiController}-postScript.sh";
+      };
     };
   };
 }

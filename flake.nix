@@ -26,6 +26,8 @@
 
     deploy-rs.url = "github:serokell/deploy-rs";
     # --------------------------------------------------------------
+    openziti.url = "github:johnalotoski/openziti-bins";
+    # openziti.url = "path:/home/jlotoski/work/johnalotoski/openziti-bins-wt/openziti-bins";
   };
 
   outputs = inputs: let
