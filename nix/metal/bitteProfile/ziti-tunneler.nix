@@ -16,7 +16,7 @@ in {
   services.resolved.enable = true;
 
   # OpenZiti Edge Tunnel Service
-  systemd.services.openziti-edge-tunnel = {
+  systemd.services.ziti-edge-tunnel = {
     wantedBy = ["multi-user.target"];
 
     startLimitIntervalSec = 0;

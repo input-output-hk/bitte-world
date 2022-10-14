@@ -209,8 +209,7 @@ in {
             inherit
               (import ./sg.nix {inherit terralib lib;} config)
               ziti-controller-rest
-              # ziti-controller-mgmt
-              
+              ziti-controller-mgmt
               ziti-router-edge
               ziti-router-fabric
               ;

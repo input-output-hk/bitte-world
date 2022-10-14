@@ -98,9 +98,9 @@
       linkDialWorkerCount: 32
   '';
 
-  cfg = config.services.openziti-router;
+  cfg = config.services.ziti-router;
 in {
-  options.services.openziti-router = {
+  options.services.ziti-router = {
     enable = mkOption {
       type = bool;
       default = true;
@@ -146,7 +146,7 @@ in {
     networking.firewall.allowedTCPPorts = [3022 10080];
 
     # OpenZiti Router Service
-    systemd.services.openziti-router = {
+    systemd.services.ziti-router = {
       wantedBy = ["multi-user.target"];
 
       startLimitIntervalSec = 0;
@@ -253,6 +253,10 @@ in {
                   ziti-router enroll ${routerConfigFile} --jwt "$ZITI_HOME/$ZITI_EDGE_ROUTER_HOSTNAME.jwt"
                   echo ""
                 fi
+
+                # Bootstrap a vpn service
+                # -----------------------
+                ziti edge update identity ${zitiExternalHostname} --role-attributes 'gw'
 
                 touch .bootstrap-pre-complete
               fi

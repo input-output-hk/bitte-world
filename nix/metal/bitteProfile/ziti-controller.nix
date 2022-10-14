@@ -16,6 +16,7 @@
   zitiControllerHome = "/var/lib/${zitiController}";
   zitiNetwork = "${config.cluster.name}-zt";
   zitiEdgeController = zitiExternalHostname;
+  zitiEdgeControllerRawName = "${zitiNetwork}-edge-controller";
   zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
   zitiExternalHostname = "zt.${config.cluster.domain}";
 
@@ -245,11 +246,13 @@
             options: { }
           - binding: edge-client
             options: { }
+          - binding: fabric
+            options: { }
   '';
 
-  cfg = config.services.openziti-controller;
+  cfg = config.services.ziti-controller;
 in {
-  options.services.openziti-controller = {
+  options.services.ziti-controller = {
     enable = mkOption {
       type = bool;
       default = true;
@@ -291,10 +294,10 @@ in {
     };
 
     # Required controller public ports
-    networking.firewall.allowedTCPPorts = [1280];
+    networking.firewall.allowedTCPPorts = [1280 6262];
 
     # OpenZiti Controller Service
-    systemd.services.openziti-controller = {
+    systemd.services.ziti-controller = {
       wantedBy = ["multi-user.target"];
 
       startLimitIntervalSec = 0;
@@ -307,7 +310,7 @@ in {
         ZITI_CONTROLLER_RAWNAME = zitiController;
         ZITI_EDGE_CONTROLLER_HOSTNAME = EXTERNAL_DNS;
         ZITI_EDGE_CONTROLLER_PORT = "1280";
-        ZITI_EDGE_CONTROLLER_RAWNAME = zitiEdgeController;
+        ZITI_EDGE_CONTROLLER_RAWNAME = zitiEdgeControllerRawName;
         ZITI_EDGE_ROUTER_HOSTNAME = EXTERNAL_DNS;
         ZITI_EDGE_ROUTER_PORT = "3022";
         ZITI_EDGE_ROUTER_RAWNAME = zitiEdgeRouterRawName;
@@ -330,16 +333,18 @@ in {
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
             name = "${zitiController}-preScript.sh";
-            runtimeInputs = with pkgs; [dnsutils ziti-pkg ziti-controller-pkg];
+            runtimeInputs = with pkgs; [dnsutils pwgen ziti-pkg ziti-controller-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
                 # Following env vars must be configured here vs systemd environment in order to acquire external IP
                 EXTERNAL_IP=$(dig +short myip.opendns.com @resolver1.opendns.com);
                 ZITI_EDGE_CONTROLLER_IP_OVERRIDE="$EXTERNAL_IP";
                 ZITI_EDGE_ROUTER_IP_OVERRIDE="$EXTERNAL_IP";
+                ZITI_PWD=$(pwgen -s -n 32 -1)
                 export EXTERNAL_IP
                 export ZITI_EDGE_CONTROLLER_IP_OVERRIDE
                 export ZITI_EDGE_ROUTER_IP_OVERRIDE
+                export ZITI_PWD
 
                 # shellcheck disable=SC1091
                 source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
@@ -362,6 +367,11 @@ in {
 
                 # Initialize the database with the admin user:
                 ziti-controller edge init ${controllerConfigFile} -u "$ZITI_USER" -p "$ZITI_PWD"
+
+                # Tmp workaround to share required creds for PoC -- use another mechanism; ex: vault
+                mkdir -p /run/keys/ziti
+                echo "$ZITI_USER" > /run/keys/ziti/ziti-user
+                echo "$ZITI_PWD" > /run/keys/ziti/ziti-pwd
 
                 touch .bootstrap-pre-complete
               fi
@@ -399,10 +409,26 @@ in {
                 ziti edge create edge-router-policy all-endpoints-public-routers --edge-router-roles "#public" --identity-roles "#all"
                 ziti edge create service-edge-router-policy all-routers-all-services --edge-router-roles "#all" --service-roles "#all"
 
-                # Tmp workaround to share required creds for PoC -- use another mechanism; ex: vault
-                mkdir -p /run/keys/ziti
-                echo "$ZITI_USER" > /run/keys/ziti/ziti-user
-                echo "$ZITI_PWD" > /run/keys/ziti/ziti-pwd
+                # Bootstrap a vpn service
+                # -----------------------
+
+                # Create PoC service config
+                ziti edge create config \
+                  vpn-host.v1 \
+                  host.v1 \
+                  '{"allowedAddresses":["172.16.0.0/16"],"allowedPortRanges":[{"high":65535,"low":1}],"allowedProtocols":["tcp","udp"],"forwardAddress":true,"forwardPort":true,"forwardProtocol":true}'
+
+                ziti edge create config \
+                  vpn-intercept.v1 \
+                  intercept.v1 \
+                  '{"addresses":["172.16.0.0/16"],"dialOptions":{"connectTimeoutSeconds":15,"identity":""},"portRanges":[{"high":65535,"low":1}],"protocols":["tcp","udp"],"sourceIp":""}'
+
+                # Create service
+                ziti edge create service vpn --configs vpn-host.v1 --configs vpn-intercept.v1 --encryption ON --role-attributes vpn
+
+                # Create service policy
+                ziti edge create service-policy vpn-dial Dial --identity-roles '#vpn-users' --service-roles '@vpn'
+                ziti edge create service-policy vpn-bind Bind --identity-roles '#gw' --service-roles '@vpn'
 
                 touch .bootstrap-post-complete
               fi

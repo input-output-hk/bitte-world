@@ -6,7 +6,7 @@
   ziti-console = inputs.openziti.packages.x86_64-linux.ziti-console;
 in {
   # OpenZiti Edge Tunnel Service
-  systemd.services.openziti-console = {
+  systemd.services.ziti-console = {
     wantedBy = ["multi-user.target"];
 
     startLimitIntervalSec = 0;
