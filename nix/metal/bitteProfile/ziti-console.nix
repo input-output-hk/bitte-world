@@ -25,6 +25,7 @@ in {
       RestartSec = 5;
       StateDirectory = "ziti-console";
       WorkingDirectory = "/var/lib/ziti-console";
+      LimitNOFILE = 65535;
 
       ExecStartPre = let
         preScript = pkgs.writeShellApplication {

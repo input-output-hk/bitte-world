@@ -12,12 +12,13 @@
   ziti-router-pkg = inputs.openziti.packages.x86_64-linux.ziti-router_latest;
   ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions_latest;
 
+  zitiExternalHostname = "zt.${config.cluster.domain}";
   zitiController = "ziti-controller";
-  zitiEdgeController = "ziti-edge-controller";
+  zitiEdgeController = zitiExternalHostname;
   zitiRouter = "ziti-router";
   zitiRouterHome = "/var/lib/${zitiRouter}";
   zitiNetwork = "${config.cluster.name}-zt";
-  zitiEdgeRouter = "ziti-edge-router";
+  zitiEdgeRouter = zitiExternalHostname;
   zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
 
   routerConfigFile = builtins.toFile "${zitiEdgeRouter}.yaml" ''
@@ -122,7 +123,7 @@ in {
 
   config = {
     # OpenZiti CLI package
-    environment.systemPackages = [
+    environment.systemPackages = with pkgs; [
       step-cli
       ziti-cli-functions
       ziti-pkg
@@ -138,8 +139,11 @@ in {
 
     # OpenZiti self hostname resolution
     networking.hosts = {
-      "127.0.0.1" = [zitiEdgeRouter];
+      "127.0.0.1" = [zitiEdgeRouter zitiExternalHostname];
     };
+
+    # Required edge router public ports
+    networking.firewall.allowedTCPPorts = [3022 10080];
 
     # OpenZiti Router Service
     systemd.services.openziti-router = {
@@ -148,19 +152,27 @@ in {
       startLimitIntervalSec = 0;
       startLimitBurst = 0;
 
-      environment = {
+      environment = rec {
+        EXTERNAL_DNS = zitiExternalHostname;
         HOME = zitiRouterHome;
         ZITI_BIN_DIR = "${zitiRouterHome}/ziti-bin";
         ZITI_CONTROLLER_INTERMEDIATE_NAME = "${zitiController}-intermediate";
         ZITI_CONTROLLER_RAWNAME = zitiController;
+        ZITI_EDGE_CONTROLLER_HOSTNAME = EXTERNAL_DNS;
+        ZITI_EDGE_CONTROLLER_PORT = "1280";
         ZITI_EDGE_CONTROLLER_RAWNAME = zitiEdgeController;
-        ZITI_EDGE_ROUTER_HOSTNAME = zitiEdgeRouterRawName;
+        ZITI_EDGE_ROUTER_HOSTNAME = EXTERNAL_DNS;
         ZITI_EDGE_ROUTER_PORT = "3022";
         ZITI_EDGE_ROUTER_RAWNAME = zitiEdgeRouterRawName;
         ZITI_EDGE_ROUTER_ROLES = "public";
         ZITI_HOME = zitiRouterHome;
         ZITI_NETWORK = zitiNetwork;
         ZITI_PKI_OS_SPECIFIC = "${zitiRouterHome}/pki";
+
+        # Must be configured in the preStart script below in order to acquire external IP
+        # EXTERNAL_IP = "...";
+        # ZITI_EDGE_CONTROLLER_IP_OVERRIDE = "...";
+        # ZITI_EDGE_ROUTER_IP_OVERRIDE = "...";
       };
 
       serviceConfig = {
@@ -168,6 +180,7 @@ in {
         RestartSec = 5;
         StateDirectory = zitiRouter;
         WorkingDirectory = zitiRouterHome;
+        LimitNOFILE = 65535;
 
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
@@ -175,6 +188,14 @@ in {
             runtimeInputs = with pkgs; [dnsutils fd ziti-pkg ziti-router-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
+                # Following env vars must be configured here vs systemd environment in order to acquire external IP
+                EXTERNAL_IP=$(dig +short myip.opendns.com @resolver1.opendns.com);
+                ZITI_EDGE_CONTROLLER_IP_OVERRIDE="$EXTERNAL_IP";
+                ZITI_EDGE_ROUTER_IP_OVERRIDE="$EXTERNAL_IP";
+                export EXTERNAL_IP
+                export ZITI_EDGE_CONTROLLER_IP_OVERRIDE
+                export ZITI_EDGE_ROUTER_IP_OVERRIDE
+
                 # shellcheck disable=SC1091
                 source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
 
@@ -187,18 +208,14 @@ in {
                 ln -sf ${ziti-pkg}/bin/ziti "$ZITI_BIN_DIR"/ziti
                 ln -sf ${ziti-pkg}/bin/ziti-router "$ZITI_BIN_DIR"/ziti-router
 
-                # Add this routers public IP to the PoC pki
-                ZITI_EDGE_ROUTER_IP_OVERRIDE=$(dig +short myip.opendns.com @resolver1.opendns.com);
-                export ZITI_EDGE_ROUTER_IP_OVERRIDE
-
                 # Tmp workaround to share required certs for PoC -- use another mechanism; ex: vault
                 while ! [ -f /var/lib/ziti-controller/pki/cas.pem ]; do
                   echo "Waiting for shared cert access..."
                   sleep 2
                 done
                 cp -a /var/lib/ziti-controller/pki/ziti-controller-intermediate /var/lib/ziti-router/pki/
-                cp -a /var/lib/ziti-controller/pki/ziti-edge-controller-intermediate /var/lib/ziti-router/pki/
-                cp -a /var/lib/ziti-controller/pki/cas.pem /var/lib/ziti-router/pki/routers/ziti-edge-router/cas.cert
+                cp -a /var/lib/ziti-controller/pki/${zitiExternalHostname}-intermediate /var/lib/ziti-router/pki/
+                cp -a /var/lib/ziti-controller/pki/cas.pem /var/lib/ziti-router/pki/routers/${zitiExternalHostname}/cas.cert
 
                 # Create PoC router pki
                 createRouterPki "$ZITI_EDGE_ROUTER_RAWNAME"
@@ -223,7 +240,7 @@ in {
                   "${zitiEdgeController}:1280" \
                   -u "$(cat /run/keys/ziti/ziti-user)" \
                   -p "$(cat /run/keys/ziti/ziti-pwd)" \
-                  -c /var/lib/ziti-router/pki/ziti-edge-controller-intermediate/certs/ziti-edge-controller-intermediate.cert
+                  -c /var/lib/ziti-router/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-intermediate.cert
 
                 FOUND=$(ziti edge list edge-routers 'name = "'"$ZITI_EDGE_ROUTER_HOSTNAME"'"' | grep -c "$ZITI_EDGE_ROUTER_HOSTNAME") || true
                 if [ "$FOUND" -gt 0 ]; then

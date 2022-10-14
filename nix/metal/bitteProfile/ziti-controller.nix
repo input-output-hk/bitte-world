@@ -15,8 +15,9 @@
   zitiController = "ziti-controller";
   zitiControllerHome = "/var/lib/${zitiController}";
   zitiNetwork = "${config.cluster.name}-zt";
-  zitiEdgeController = "ziti-edge-controller";
+  zitiEdgeController = zitiExternalHostname;
   zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
+  zitiExternalHostname = "zt.${config.cluster.domain}";
 
   controllerConfigFile = builtins.toFile "${zitiEdgeController}.yaml" ''
     # Primary ref:     https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/config_templates/controller.yml
@@ -36,9 +37,9 @@
     db:                     "${zitiControllerHome}/db/ctrl.db"
 
     identity:
-      cert:                 "${zitiControllerHome}/pki/${zitiController}-intermediate/certs/${zitiController}-client.cert"
-      server_cert:          "${zitiControllerHome}/pki/${zitiController}-intermediate/certs/${zitiController}-server.chain.pem"
-      key:                  "${zitiControllerHome}/pki/${zitiController}-intermediate/keys/${zitiController}-server.key"
+      cert:                 "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-client.cert"
+      server_cert:          "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-server.chain.pem"
+      key:                  "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/keys/${zitiExternalHostname}-server.key"
       ca:                   "${zitiControllerHome}/pki/cas.pem"
 
     # Network Configuration
@@ -199,10 +200,10 @@
         # identity - optional
         # Allows the webListener to have a specific identity instead of defaulting to the root 'identity' section.
         identity:
-          ca:          "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-intermediate.cert"
-          key:         "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/keys/${zitiEdgeController}-server.key"
-          server_cert: "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-server.chain.pem"
-          cert:        "${zitiControllerHome}/pki/${zitiEdgeController}-intermediate/certs/${zitiEdgeController}-client.cert"
+          ca:          "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-intermediate.cert"
+          key:         "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/keys/${zitiExternalHostname}-server.key"
+          server_cert: "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-server.chain.pem"
+          cert:        "${zitiControllerHome}/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-client.cert"
         # options - optional
         # Allows the specification of webListener level options - mainly dealing with HTTP/TLS settings. These options are
         # used for all http servers started by the current webListener.
@@ -270,7 +271,7 @@ in {
 
   config = {
     # OpenZiti CLI package
-    environment.systemPackages = [
+    environment.systemPackages = with pkgs; [
       step-cli
       ziti-cli-functions
       ziti-controller-pkg
@@ -286,8 +287,11 @@ in {
 
     # OpenZiti self hostname resolution
     networking.hosts = {
-      "127.0.0.1" = [zitiController zitiEdgeController];
+      "127.0.0.1" = [zitiController zitiEdgeController zitiExternalHostname];
     };
+
+    # Required controller public ports
+    networking.firewall.allowedTCPPorts = [1280];
 
     # OpenZiti Controller Service
     systemd.services.openziti-controller = {
@@ -296,16 +300,24 @@ in {
       startLimitIntervalSec = 0;
       startLimitBurst = 0;
 
-      environment = {
+      environment = rec {
+        EXTERNAL_DNS = zitiExternalHostname;
         HOME = zitiControllerHome;
         ZITI_BIN_DIR = "${zitiControllerHome}/ziti-bin";
         ZITI_CONTROLLER_RAWNAME = zitiController;
+        ZITI_EDGE_CONTROLLER_HOSTNAME = EXTERNAL_DNS;
+        ZITI_EDGE_CONTROLLER_PORT = "1280";
         ZITI_EDGE_CONTROLLER_RAWNAME = zitiEdgeController;
-        ZITI_EDGE_ROUTER_HOSTNAME = zitiEdgeRouterRawName;
+        ZITI_EDGE_ROUTER_HOSTNAME = EXTERNAL_DNS;
         ZITI_EDGE_ROUTER_PORT = "3022";
         ZITI_EDGE_ROUTER_RAWNAME = zitiEdgeRouterRawName;
         ZITI_HOME = zitiControllerHome;
         ZITI_NETWORK = zitiNetwork;
+
+        # Must be configured in the preStart script below in order to acquire external IP
+        # EXTERNAL_IP = "...";
+        # ZITI_EDGE_CONTROLLER_IP_OVERRIDE = "...";
+        # ZITI_EDGE_ROUTER_IP_OVERRIDE = "...";
       };
 
       serviceConfig = {
@@ -313,13 +325,22 @@ in {
         RestartSec = 5;
         StateDirectory = zitiController;
         WorkingDirectory = zitiControllerHome;
+        LimitNOFILE = 65535;
 
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
             name = "${zitiController}-preScript.sh";
-            runtimeInputs = with pkgs; [ziti-pkg ziti-controller-pkg];
+            runtimeInputs = with pkgs; [dnsutils ziti-pkg ziti-controller-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
+                # Following env vars must be configured here vs systemd environment in order to acquire external IP
+                EXTERNAL_IP=$(dig +short myip.opendns.com @resolver1.opendns.com);
+                ZITI_EDGE_CONTROLLER_IP_OVERRIDE="$EXTERNAL_IP";
+                ZITI_EDGE_ROUTER_IP_OVERRIDE="$EXTERNAL_IP";
+                export EXTERNAL_IP
+                export ZITI_EDGE_CONTROLLER_IP_OVERRIDE
+                export ZITI_EDGE_ROUTER_IP_OVERRIDE
+
                 # shellcheck disable=SC1091
                 source ${ziti-cli-functions}/bin/ziti-cli-functions.sh
 

@@ -206,6 +206,14 @@ in {
 
           securityGroupRules = {
             inherit (securityGroupRules) internet internal ssh;
+            inherit
+              (import ./sg.nix {inherit terralib lib;} config)
+              ziti-controller-rest
+              # ziti-controller-mgmt
+              
+              ziti-router-edge
+              ziti-router-fabric
+              ;
           };
         };
       };

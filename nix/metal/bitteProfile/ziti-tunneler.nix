@@ -7,7 +7,7 @@
   ziti-edge-tunnel = inputs.openziti.packages.x86_64-linux.ziti-edge-tunnel_latest;
 in {
   # OpenZiti CLI package
-  environment.systemPackages = [
+  environment.systemPackages = with pkgs; [
     step-cli
     ziti-edge-tunnel
   ];
@@ -31,6 +31,9 @@ in {
     serviceConfig = {
       Restart = "always";
       RestartSec = 5;
+      StateDirectory = "ziti";
+      WorkingDirectory = "/var/lib/ziti";
+      LimitNOFILE = 65535;
 
       ExecStart = let
         script = pkgs.writeShellApplication {
@@ -44,9 +47,6 @@ in {
           '';
         };
       in "${script}/bin/ziti-edge-tunnel";
-
-      StateDirectory = "ziti";
-      WorkingDirectory = "/var/lib/ziti";
     };
   };
 }
