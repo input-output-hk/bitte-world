@@ -26,6 +26,19 @@ in {
       flakePath = "${inputs.self}";
       vbkBackend = "local";
       builder = "cache";
+      transitGateway = {
+        enable = true;
+        transitRoutes = [
+          {
+            gatewayCoreNodeName = "zt";
+            cidrRange = "10.10.0.0/24";
+          }
+          {
+            gatewayCoreNodeName = "zt";
+            cidrRange = "10.11.0.0/24";
+          }
+        ];
+      };
 
       autoscalingGroups = let
         defaultModules = [
@@ -74,6 +87,9 @@ in {
         lib.listToAttrs (lib.forEach [
             (mkAsgs "eu-central-1" 3 "t3a.medium" 100 "patroni" "patroni" {withPatroni = true;} {})
             (mkAsgs "eu-central-1" 1 "t3a.medium" 100 "tempo" "tempo" {} {})
+            (mkAsgs "eu-central-1" 1 "t3a.small" 100 "test" "test" {} {})
+            (mkAsgs "us-east-2" 1 "t3a.small" 100 "test" "test" {} {})
+            (mkAsgs "eu-west-1" 1 "t3a.small" 100 "test" "test" {} {})
           ]
           (args: let
             attrs =
@@ -192,16 +208,54 @@ in {
           privateIP = "172.16.0.30";
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 100;
+          sourceDestCheck = false;
 
           modules = [
             (bitte + /profiles/common.nix)
             ./ziti-controller.nix
-            ./ziti-edge-router.nix
+            ./ziti-router.nix
             ./ziti-console.nix
-            # ./ziti-tunneler.nix
-            # ({lib, ...}: {
-            #   services.resolved.enable = lib.mkForce false;
-            # })
+            ./ziti-edge-tunnel.nix
+            ({
+              config,
+              pkgs,
+              ...
+            }: {
+              boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
+              services = {
+                ziti-controller = {
+                  enable = true;
+                  extraBootstrapPost = ''
+                    ziti edge create config \
+                      vpn-host.v1 \
+                      host.v1 \
+                      '{"allowedAddresses":["172.16.0.0/16"],"allowedPortRanges":[{"high":65535,"low":1}],"allowedProtocols":["tcp","udp"],"forwardAddress":true,"forwardPort":true,"forwardProtocol":true}'
+
+                    ziti edge create config \
+                      vpn-intercept.v1 \
+                      intercept.v1 \
+                      '{"addresses":["172.16.0.0/16"],"dialOptions":{"connectTimeoutSeconds":15,"identity":""},"portRanges":[{"high":65535,"low":1}],"protocols":["tcp","udp"],"sourceIp":""}'
+
+                    # Create service
+                    ziti edge create service vpn --configs vpn-host.v1 --configs vpn-intercept.v1 --encryption ON --role-attributes vpn
+
+                    # Create service policy
+                    ziti edge create service-policy vpn-dial Dial --identity-roles '#vpn-users' --service-roles '@vpn'
+                    ziti edge create service-policy vpn-bind Bind --identity-roles '#gw' --service-roles '@vpn'
+                  '';
+                };
+
+                ziti-router = {
+                  enable = true;
+                  extraBootstrapPost = ''
+                    ziti edge update identity "$EXTERNAL_DNS" --role-attributes 'gw'
+                  '';
+                };
+
+                ziti-console.enable = true;
+                ziti-edge-tunnel.enable = true;
+              };
+            })
           ];
 
           securityGroupRules = {
@@ -245,11 +299,20 @@ in {
           modules = [
             (bitte + /profiles/client.nix)
             ./equinix/test/configuration.nix
-            ./zt-tunneler.nix
-            {
+            ./ziti-edge-tunnel.nix
+            ({
+              lib,
+              config,
+              ...
+            }: {
               # Required due to Equinix networkd default and wireless dhcp default
               networking.useDHCP = false;
-            }
+              services.dnsmasq.enable = lib.mkOverride 10 false;
+              services.ziti-edge-tunnel = {
+                enable = true;
+                enableResolved = false;
+              };
+            })
           ];
         };
       };

@@ -337,18 +337,14 @@
         "utils": "utils_11"
       },
       "locked": {
-        "lastModified": 1665443538,
-        "narHash": "sha256-V9Bncy1JdVff6LWW6CG4OeMLHDBTj8xU9twTWbgZz5k=",
-        "owner": "input-output-hk",
-        "repo": "bitte",
-        "rev": "f622a6b9d1b6037135d932185b598eeea577f1ba",
-        "type": "github"
+        "lastModified": 1666195230,
+        "narHash": "sha256-ZTfO2qvSaBUmcdvpUVhjVLj+C98podaFuKihbh/E2aE=",
+        "path": "/home/jlotoski/work/iohk/bitte-wt/equinix",
+        "type": "path"
       },
       "original": {
-        "owner": "input-output-hk",
-        "ref": "equinix",
-        "repo": "bitte",
-        "type": "github"
+        "path": "/home/jlotoski/work/iohk/bitte-wt/equinix",
+        "type": "path"
       }
     },
     "bitte-cells": {
@@ -1645,6 +1641,22 @@
         "type": "github"
       }
     },
+    "flake-compat_11": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1650374568,
+        "narHash": "sha256-Z+s0J8/r907g149rllvwhb4pKi8Wam5ij0st8PwAh+E=",
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "rev": "b4a34015c698c7793d592d66adbab377907a2be8",
+        "type": "github"
+      },
+      "original": {
+        "owner": "edolstra",
+        "repo": "flake-compat",
+        "type": "github"
+      }
+    },
     "flake-compat_2": {
       "flake": false,
       "locked": {
@@ -1771,6 +1783,24 @@
       "original": {
         "owner": "edolstra",
         "repo": "flake-compat",
+        "type": "github"
+      }
+    },
+    "flake-parts": {
+      "inputs": {
+        "nixpkgs-lib": "nixpkgs-lib"
+      },
+      "locked": {
+        "lastModified": 1665512413,
+        "narHash": "sha256-IeuXVWD+VkmdVdC3d2i7mdEWhNSEvc2GUdui09zAGpE=",
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
+        "rev": "08ce9a42392cf8c7fdabf7c51069381ba5455dc7",
+        "type": "github"
+      },
+      "original": {
+        "owner": "hercules-ci",
+        "repo": "flake-parts",
         "type": "github"
       }
     },
@@ -3368,7 +3398,7 @@
     },
     "nix-nomad_2": {
       "inputs": {
-        "flake-compat": "flake-compat_10",
+        "flake-compat": "flake-compat_11",
         "flake-utils": [
           "tullia",
           "nix2container",
@@ -4028,6 +4058,24 @@
         "owner": "nixos",
         "repo": "nixpkgs",
         "rev": "ff691ed9ba21528c1b4e034f36a04027e4522c58",
+        "type": "github"
+      }
+    },
+    "nixpkgs-lib": {
+      "locked": {
+        "dir": "lib",
+        "lastModified": 1665349835,
+        "narHash": "sha256-UK4urM3iN80UXQ7EaOappDzcisYIuEURFRoGQ/yPkug=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "34c5293a71ffdb2fe054eb5288adc1882c1eb0b1",
+        "type": "github"
+      },
+      "original": {
+        "dir": "lib",
+        "owner": "NixOS",
+        "ref": "nixos-unstable",
+        "repo": "nixpkgs",
         "type": "github"
       }
     },
@@ -5264,16 +5312,18 @@
     },
     "openziti": {
       "inputs": {
+        "flake-compat": "flake-compat_10",
+        "flake-parts": "flake-parts",
         "napalm": "napalm",
         "nixpkgs": "nixpkgs_52",
         "zitiConsole": "zitiConsole"
       },
       "locked": {
-        "lastModified": 1665788278,
-        "narHash": "sha256-paBIR+ZWdpA7rXRiwfKHNGTB/bNBZyrq8FhJlrDr8TM=",
+        "lastModified": 1666316793,
+        "narHash": "sha256-t/YGTKKoBN5ZpbkFHbnJnLqWWhaXymGw6hjCFudM1YA=",
         "owner": "johnalotoski",
         "repo": "openziti-bins",
-        "rev": "9c9d8d565fc365bef186144352428e494f60c703",
+        "rev": "89759a9f84625d6afdd3a4611ed5cc349e2f4f60",
         "type": "github"
       },
       "original": {
@@ -6637,11 +6687,11 @@
     "zitiConsole": {
       "flake": false,
       "locked": {
-        "lastModified": 1664801756,
-        "narHash": "sha256-GPiVECt7+zHkIb1KgnqJCjeHoAqG7RAyv+l57laHYiU=",
+        "lastModified": 1666226159,
+        "narHash": "sha256-QYNd/RNwzYO+oIShIJ16iBP5K3DAXsiVnQepWWNZ9VU=",
         "owner": "openziti",
         "repo": "ziti-console",
-        "rev": "f289bb36b8ad2910e63c28bb26e8e30179a62de6",
+        "rev": "2c3f28ab6624c095aff4260c176c7492c7298dc2",
         "type": "github"
       },
       "original": {

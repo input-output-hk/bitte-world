@@ -37,6 +37,7 @@ in {
       nomad.namespaces = {
         patroni = {description = "patroni";};
         tempo = {description = "tempo";};
+        test = {description = "test";};
       };
     };
 

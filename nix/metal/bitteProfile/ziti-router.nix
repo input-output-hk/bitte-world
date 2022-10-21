@@ -1,15 +1,16 @@
 {
   pkgs,
+  lib,
   inputs,
   config,
   ...
 }: let
-  inherit (pkgs) lib;
   inherit (lib) mkIf mkOption;
-  inherit (lib.types) bool;
+  inherit (lib.types) bool str;
 
   ziti-pkg = inputs.openziti.packages.x86_64-linux.ziti_latest;
   ziti-router-pkg = inputs.openziti.packages.x86_64-linux.ziti-router_latest;
+  ziti-tunnel-pkg = inputs.openziti.packages.x86_64-linux.ziti-tunnel_latest;
   ziti-cli-functions = inputs.openziti.packages.x86_64-linux.ziti-cli-functions_latest;
 
   zitiExternalHostname = "zt.${config.cluster.domain}";
@@ -21,93 +22,95 @@
   zitiEdgeRouter = zitiExternalHostname;
   zitiEdgeRouterRawName = "${zitiNetwork}-edge-router";
 
-  routerConfigFile = builtins.toFile "${zitiEdgeRouter}.yaml" ''
-    # Primary ref:     https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/config_templates/router.yml
-    #   * The primary ref generates the quickstart router configs
-    # Secondary ref:   https://github.com/openziti/ziti/blob/release-next/etc/edge.router.yml
-    #   * The secondary ref contains additional config documentation notes and a few extra/different options
+  # Config refs:
+  #   ziti create config router --help
+  #   https://github.com/openziti/ziti/blob/release-next/ziti/cmd/ziti/cmd/config_templates/router.yml
+  #   https://github.com/openziti/ziti/blob/release-next/etc/edge.router.yml
+  routerConfigNix = {
+    v = 3;
+    identity = {
+      cert = "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-client.cert";
+      server_cert = "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-server.cert";
+      key = "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-server.key";
+      ca = "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/cas.cert";
+    };
+    ctrl = {
+      endpoint = "tls:${zitiController}:6262";
+    };
+    link = {
+      dialers = [
+        {
+          binding = "transport";
+        }
+      ];
+      listeners = [
+        {
+          binding = "transport";
+          bind = "tls:0.0.0.0:10080";
+          advertise = "tls:${zitiEdgeRouter}:10080";
+          options = {
+            outQueueSize = 4;
+          };
+        }
+      ];
+    };
+    listeners = [
+      {
+        binding = "edge";
+        address = "tls:0.0.0.0:3022";
+        options = {
+          advertise = "${zitiEdgeRouter}:3022";
+          connectTimeoutMs = 1000;
+          getSessionTimeout = "60s";
+        };
+      }
+      {
+        binding = "tunnel";
+        options = {
+          mode = "host";
+        };
+      }
+    ];
+    edge = {
+      heartbeatIntervalSeconds = 60;
+      csr = {
+        country = "US";
+        province = "CO";
+        locality = "Longmont";
+        organization = "IOG";
+        organizationalUnit = "IO";
+        sans = {
+          dns = [
+            "${zitiEdgeRouter}"
+            "localhost"
+          ];
+          ip = [
+            "127.0.0.1"
+          ];
+        };
+      };
+    };
+    forwarder = {
+      latencyProbeInterval = 10;
+      xgressDialQueueLength = 1000;
+      xgressDialWorkerCount = 128;
+      linkDialQueueLength = 1000;
+      linkDialWorkerCount = 32;
+    };
+  };
 
-    v: 3
-
-    identity:
-      cert:                 "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-client.cert"
-      server_cert:          "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-server.cert"
-      key:                  "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/${zitiEdgeRouterRawName}-server.key"
-      ca:                   "${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/cas.cert"
-
-    ctrl:
-      endpoint:             tls:${zitiController}:6262
-
-    link:
-      dialers:
-        - binding: transport
-      listeners:
-        - binding:          transport
-          bind:             tls:0.0.0.0:10080
-          advertise:        tls:${zitiEdgeRouter}:10080
-          options:
-            outQueueSize:   4
-
-    listeners:
-    # bindings of edge and tunnel requires an "edge" section below
-      - binding: edge
-        address: tls:0.0.0.0:3022
-        options:
-          advertise: ${zitiEdgeRouter}:3022
-          connectTimeoutMs: 1000
-          getSessionTimeout: 60s
-      - binding: tunnel
-        options:
-          mode: host #tproxy|host
-
-
-    edge:
-      heartbeatIntervalSeconds: 60
-      csr:
-        country: US
-        province: CO
-        locality: Longmont
-        organization: IOG
-        organizationalUnit: IO
-        sans:
-          dns:
-            - ${zitiEdgeRouter}
-            - localhost
-          ip:
-            - "127.0.0.1"
-
-    #transport:
-    #  ws:
-    #    writeTimeout: 10
-    #    readTimeout: 5
-    #    idleTimeout: 5
-    #    pongTimeout: 60
-    #    pingInterval: 54
-    #    handshakeTimeout: 10
-    #    readBufferSize: 4096
-    #    writeBufferSize: 4096
-    #    enableCompression: true
-    #    server_cert: ${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/server.cert
-    #    key: ${zitiRouterHome}/pki/routers/${zitiEdgeRouter}/server.key
-
-    forwarder:
-      latencyProbeInterval: 10
-      xgressDialQueueLength: 1000
-      xgressDialWorkerCount: 128
-      linkDialQueueLength: 1000
-      linkDialWorkerCount: 32
-  '';
-
+  routerConfigFile = pkgs.toPrettyJSON "${zitiEdgeRouter}.yaml" routerConfigNix;
   cfg = config.services.ziti-router;
 in {
   options.services.ziti-router = {
     enable = mkOption {
       type = bool;
-      default = true;
+      default = false;
       description = ''
         Enable the OpenZiti router service.
       '';
     };
+
     enableBashIntegration = mkOption {
       type = bool;
       # Defaults to false to avoid an auto-conflict when controller and router are on the same host
@@ -115,29 +118,42 @@ in {
       description = ''
         Enable integration of OpenZiti bash completions and sourcing of the Ziti environment.
 
-        NOTE: If multiple OpenZiti services are running on one host, the bash integration
+        NOTE: If multiple OpenZiti services are running on one host; the bash integration
               should be enabled for only one of the services.
+      '';
+    };
+
+    extraBootstrapPre = mkOption {
+      type = str;
+      default = "";
+      description = ''
+        Extra code which will be run at the end of the systemd ExecStartPre block.
+      '';
+    };
+
+    extraBootstrapPost = mkOption {
+      type = str;
+      default = "";
+      description = ''
+        Extra code which will be run at the end of the systemd ExecStartPost block.
       '';
     };
   };
 
-  config = {
+  config = mkIf cfg.enable {
     # OpenZiti CLI package
     environment.systemPackages = with pkgs; [
       step-cli
       ziti-cli-functions
       ziti-pkg
       ziti-router-pkg
+      ziti-tunnel-pkg
     ];
 
     programs.bash.interactiveShellInit = mkIf cfg.enableBashIntegration ''
       [ -f ${zitiRouterHome}/${zitiNetwork}.env ] && source ${zitiRouterHome}/${zitiNetwork}.env
     '';
 
-    # OpenZiti DNS integration
-    services.resolved.enable = true;
-
-    # OpenZiti self hostname resolution
     networking.hosts = {
       "127.0.0.1" = [zitiEdgeRouter zitiExternalHostname];
     };
@@ -145,7 +161,6 @@ in {
     # Required edge router public ports
     networking.firewall.allowedTCPPorts = [3022 10080];
 
-    # OpenZiti Router Service
     systemd.services.ziti-router = {
       wantedBy = ["multi-user.target"];
 
@@ -185,7 +200,7 @@ in {
         ExecStartPre = let
           preScript = pkgs.writeShellApplication {
             name = "${zitiRouter}-preScript.sh";
-            runtimeInputs = with pkgs; [dnsutils fd ziti-pkg ziti-router-pkg];
+            runtimeInputs = with pkgs; [dnsutils fd gnugrep ziti-pkg ziti-router-pkg];
             text = ''
               if ! [ -f .bootstrap-pre-complete ]; then
                 # Following env vars must be configured here vs systemd environment in order to acquire external IP
@@ -222,7 +237,7 @@ in {
                 fd -t f "$ZITI_EDGE_ROUTER_RAWNAME" "pki/$ZITI_CONTROLLER_INTERMEDIATE_NAME" -x mv {} pki/routers/${zitiEdgeRouter}
 
                 # Tmp workaround to share required certs for PoC -- use another mechanism; ex: vault
-                while ! [ -f /run/keys/ziti/ziti-user ]; do
+                while ! [ -f /var/lib/ziti-controller/${zitiNetwork}.env ]; do
                   echo "Waiting for shared access..."
                   sleep 2
                 done
@@ -236,10 +251,16 @@ in {
                 # Ensure the controller has fully bootstrapped
                 sleep 10
 
+                # shellcheck disable=SC1090
+                source <(grep ZITI_USER= /var/lib/ziti-controller/${zitiNetwork}.env)
+
+                # shellcheck disable=SC1090
+                source <(grep ZITI_PWD= /var/lib/ziti-controller/${zitiNetwork}.env)
+
                 ziti edge login \
                   "${zitiEdgeController}:1280" \
-                  -u "$(cat /run/keys/ziti/ziti-user)" \
-                  -p "$(cat /run/keys/ziti/ziti-pwd)" \
+                  -u "$ZITI_USER" \
+                  -p "$ZITI_PWD" \
                   -c /var/lib/ziti-router/pki/${zitiExternalHostname}-intermediate/certs/${zitiExternalHostname}-intermediate.cert
 
                 FOUND=$(ziti edge list edge-routers 'name = "'"$ZITI_EDGE_ROUTER_HOSTNAME"'"' | grep -c "$ZITI_EDGE_ROUTER_HOSTNAME") || true
@@ -254,9 +275,8 @@ in {
                   echo ""
                 fi
 
-                # Bootstrap a vpn service
-                # -----------------------
-                ziti edge update identity ${zitiExternalHostname} --role-attributes 'gw'
+                # Include user defined pre start bootstrap scripting
+                ${cfg.extraBootstrapPre}
 
                 touch .bootstrap-pre-complete
               fi
@@ -267,11 +287,26 @@ in {
         ExecStart = let
           script = pkgs.writeShellApplication {
             name = zitiRouter;
+            runtimeInputs = with pkgs; [iproute2 iptables];
             text = ''
               exec ${ziti-router-pkg}/bin/ziti-router run ${routerConfigFile}
             '';
           };
         in "${script}/bin/${zitiRouter}";
+
+        ExecStartPost = let
+          postScript = pkgs.writeShellApplication {
+            name = "${zitiRouter}-postScript.sh";
+            text = ''
+              if ! [ -f .bootstrap-post-complete ]; then
+                # Include user defined pre start bootstrap scripting
+                ${cfg.extraBootstrapPre}
+
+                touch .bootstrap-post-complete
+              fi
+            '';
+          };
+        in "${postScript}/bin/${zitiRouter}-postScript.sh";
       };
     };
   };
