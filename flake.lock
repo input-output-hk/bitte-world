@@ -337,14 +337,18 @@
         "utils": "utils_11"
       },
       "locked": {
-        "lastModified": 1666195230,
-        "narHash": "sha256-ZTfO2qvSaBUmcdvpUVhjVLj+C98podaFuKihbh/E2aE=",
-        "path": "/home/jlotoski/work/iohk/bitte-wt/equinix",
-        "type": "path"
+        "lastModified": 1666793727,
+        "narHash": "sha256-lk46T9F8UnjFL6WOa7d4yXEYfrcBvFW+h8eHaVltzMY=",
+        "owner": "input-output-hk",
+        "repo": "bitte",
+        "rev": "89fd1fcf2213b38885ef5dcc9f9d34b7e43443db",
+        "type": "github"
       },
       "original": {
-        "path": "/home/jlotoski/work/iohk/bitte-wt/equinix",
-        "type": "path"
+        "owner": "input-output-hk",
+        "ref": "equinix",
+        "repo": "bitte",
+        "type": "github"
       }
     },
     "bitte-cells": {

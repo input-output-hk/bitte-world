@@ -24,8 +24,9 @@ in {
       name = "bitte-world";
       infraType = "awsExt";
 
-      adminNames = ["john.lotoski"];
-      developerGithubNames = [];
+      adminNames = ["johnalotoski"];
+      # adminGithubTeamNames = lib.mkForce [ "non-existent-team" ];
+      developerGithubNames = ["shlevy"];
       developerGithubTeamNames = [];
       domain = "bitte.aws.iohkdev.io";
       kms = "arn:aws:kms:eu-central-1:415292740809:key/ac0f6066-1359-4fbc-899b-922f0b34492e";
@@ -54,6 +55,11 @@ in {
           s = "sudo";
           caps = lib.mapAttrs (n: v: {capabilities = v;});
         in {
+          developer.path = {
+            "kv/data/test/*".capabilities = [c r u d l];
+            "kv/metadata/*".capabilities = [l];
+          };
+
           admin.path = caps {
             "secret/*" = [c r u d l];
             "auth/github-terraform/map/users/*" = [c r u d l s];
@@ -69,30 +75,14 @@ in {
             "secret/data/vbk/vit-testnet/*" = [c r u d l];
             "secret/metadata/vbk/vit-testnet/*" = [c r u d l];
           };
+        };
 
-          client.path = caps {
-            "auth/token/create" = [u s];
-            "auth/token/create/nomad-cluster" = [u];
-            "auth/token/create/nomad-server" = [u];
-            "auth/token/lookup" = [u];
-            "auth/token/lookup-self" = [r];
-            "auth/token/renew-self" = [u];
-            "auth/token/revoke-accessor" = [u];
-            "auth/token/roles/nomad-cluster" = [r];
-            "auth/token/roles/nomad-server" = [r];
-            "consul/creds/consul-agent" = [r];
-            "consul/creds/consul-default" = [r];
-            "consul/creds/consul-register" = [r];
-            "consul/creds/nomad-client" = [r];
-            "consul/creds/vault-client" = [r];
-            "kv/data/bootstrap/clients/*" = [r];
-            "kv/data/bootstrap/static-tokens/clients/*" = [r];
-            "kv/data/nomad-cluster/*" = [r l];
-            "kv/metadata/nomad-cluster/*" = [r l];
-            "nomad/creds/nomad-follower" = [r u];
-            "pki/issue/client" = [c u];
-            "pki/roles/client" = [r];
-            "sys/capabilities-self" = [u];
+        consul.developer = {
+          service_prefix."*" = {
+            policy = "write";
+          };
+          key_prefix."test" = {
+            policy = "write";
           };
         };
 
@@ -126,9 +116,22 @@ in {
 
           developer = {
             description = "Dev policies";
-
             namespace."*".policy = "deny";
+            agent.policy = "read";
+            quota.policy = "read";
             node.policy = "read";
+            host_volume."*".policy = "write";
+            namespace."test" = {
+              policy = "write";
+              capabilities = [
+                "submit-job"
+                "dispatch-job"
+                "read-logs"
+                "alloc-exec"
+                "alloc-node-exec"
+                "alloc-lifecycle"
+              ];
+            };
           };
         };
       };

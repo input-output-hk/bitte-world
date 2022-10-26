@@ -44,8 +44,8 @@ in {
         Specify CIDR block in which service DNS names are assigned in N.N.N.N/n format (default 100.64.0.1/11).
 
         Note:
-          tunX device should appears at the declared IP in this CIDR block range (default: 100.64.0.1).
-          ziti-edge-tunnel DNS binding will appear at the second assignable IP in the CIDR block range (default: 100.64.0.2)
+          tunX device should appear at the declared IP in this CIDR block range (default: 100.64.0.1).
+          ziti-edge-tunnel DNS binding will appear at the IP after the tunX device IP (default: 100.64.0.2)
       '';
     };
 
@@ -122,7 +122,7 @@ in {
                     && echo "Cleaning up JWT {}" \
                     && rm -v {} \
                 '
-              chmod 0400 identity/*.json
+              chmod 0400 identity/*.json || true
             '';
           };
         in "${preScript}/bin/ziti-edge-tunnel-startPre.sh";
