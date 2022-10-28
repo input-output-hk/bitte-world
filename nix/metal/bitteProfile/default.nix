@@ -196,44 +196,15 @@ in {
 
           modules = [
             bitte.profiles.routing
+
+            # Required temporarily because bitte-cells.tempo.hydrationProfile qualifies
+            # routing machine nixosProfile inclusion on infraType = "aws", and this is
+            # an infraType "awsExt" experimental cluster.
             tempo.nixosProfiles.routing
-            ({
-              config,
-              lib,
-              ...
-            }: let
-              inherit (lib) mkIf;
-              cfgZt = self.nixosConfigurations."${config.cluster.name}-zt".config.services;
-            in {
-              services.traefik.staticConfigOptions.entryPoints = {
-                ziti-controller-mgmt = mkIf cfgZt.ziti-controller.enable {
-                  address = ":${toString cfgZt.ziti-controller.portManagementApi}";
-                };
-
-                ziti-controller-rest = mkIf cfgZt.ziti-controller.enable {
-                  address = ":${toString cfgZt.ziti-controller.portRestApi}";
-                };
-
-                ziti-router-edge = mkIf cfgZt.ziti-router.enable {
-                  address = ":${toString cfgZt.ziti-router.portEdgeConnection}";
-                };
-
-                ziti-router-fabric = mkIf cfgZt.ziti-router.enable {
-                  address = ":${toString cfgZt.ziti-router.portFabricLinks}";
-                };
-              };
-            })
           ];
 
           securityGroupRules = {
             inherit (securityGroupRules) internet internal ssh http https routing;
-            inherit
-              (import ./sg.nix {inherit terralib lib;} config)
-              ziti-controller-rest
-              ziti-controller-mgmt
-              ziti-router-edge
-              ziti-router-fabric
-              ;
           };
         };
 
