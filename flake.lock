@@ -364,16 +364,16 @@
         "std": "std_3"
       },
       "locked": {
-        "lastModified": 1666972929,
-        "narHash": "sha256-sJV/UaUux1BN5gugaantQRzm0SXG4A4rQE8KoyATLqc=",
+        "lastModified": 1667184809,
+        "narHash": "sha256-DHnQVyj62wMUruiWg3B2J94or167DoKCC5ChT85TntQ=",
         "owner": "input-output-hk",
         "repo": "bitte-cells",
-        "rev": "d7dbdd4e32ae20be5f8be3b3f8eac58b61b18d87",
+        "rev": "3e00f7773a68ed3448c249c6a401ae5a0e1b7350",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "vault-token-alerts",
+        "ref": "token-alert-update",
         "repo": "bitte-cells",
         "type": "github"
       }
