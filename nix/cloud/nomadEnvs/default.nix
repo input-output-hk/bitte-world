@@ -25,6 +25,10 @@ in {
           operator = "distinct_property";
           attribute = "\${attr.platform.aws.placement.availability-zone}";
         }
+        {
+          attribute = "\${attr.unique.platform.aws.instance-id}";
+          value = "i-0796efdb55698fe20";
+        }
       ];
       job.database.group.database.task.patroni.resources = {inherit (patroniMods.resources) cpu memory;};
       job.database.group.database.task.patroni.env = {inherit WALG_S3_PREFIX;};

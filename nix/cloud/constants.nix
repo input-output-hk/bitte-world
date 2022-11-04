@@ -31,7 +31,7 @@ in rec {
     WALG_S3_PREFIX = "s3://iohk-bitte-world/backups/${namespace}/walg";
 
     # Job mod constants
-    patroniMods.scaling = 3;
+    patroniMods.scaling = 1;
     patroniMods.resources.cpu = 2000;
     patroniMods.resources.memory = 2 * 1024;
   };

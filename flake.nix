@@ -7,8 +7,8 @@
     # --- Bitte Stack ----------------------------------------------
     bitte.url = "github:input-output-hk/bitte/equinix";
     # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/equinix";
-    bitte-cells.url = "github:input-output-hk/bitte-cells/token-alert-update";
-    # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/token-alert-update";
+    bitte-cells.url = "github:input-output-hk/bitte-cells/patroni-token-rotation";
+    # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/patroni-token-rotation";
     # --------------------------------------------------------------
     # --- Auxiliary Nixpkgs ----------------------------------------
     # nixpkgs.follows = "bitte/nixpkgs";

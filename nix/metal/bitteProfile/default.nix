@@ -173,7 +173,22 @@ in {
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 300;
 
-          modules = [bitte.profiles.monitoring];
+          modules = [
+            bitte.profiles.monitoring
+
+            # For fast oci build iteration
+            (bitte + "/profiles/auxiliaries/docker.nix")
+            ({
+              etcEncrypted,
+              dockerAuth,
+              ...
+            }: {
+              secrets.install.docker-login = {
+                source = "${etcEncrypted}/docker-passwords.json";
+                target = dockerAuth;
+              };
+            })
+          ];
 
           securityGroupRules = {
             inherit

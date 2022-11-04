@@ -337,11 +337,11 @@
         "utils": "utils_11"
       },
       "locked": {
-        "lastModified": 1666793727,
-        "narHash": "sha256-lk46T9F8UnjFL6WOa7d4yXEYfrcBvFW+h8eHaVltzMY=",
+        "lastModified": 1667606171,
+        "narHash": "sha256-5osCC/5sQmEGJ1iGNFHIcICxAlxeJhzBfS99yJhJpm4=",
         "owner": "input-output-hk",
         "repo": "bitte",
-        "rev": "89fd1fcf2213b38885ef5dcc9f9d34b7e43443db",
+        "rev": "6acf0c1accc2b66dfda8d11eb04e38e3ed2c29bf",
         "type": "github"
       },
       "original": {
@@ -364,16 +364,16 @@
         "std": "std_3"
       },
       "locked": {
-        "lastModified": 1667184809,
-        "narHash": "sha256-DHnQVyj62wMUruiWg3B2J94or167DoKCC5ChT85TntQ=",
+        "lastModified": 1667604276,
+        "narHash": "sha256-W7OqjezCA5gdOted74wGijaLjujN8XweuEI0A7mU/Pc=",
         "owner": "input-output-hk",
         "repo": "bitte-cells",
-        "rev": "3e00f7773a68ed3448c249c6a401ae5a0e1b7350",
+        "rev": "a78fb1600feeafd855ba17a01c41c695701af16b",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
-        "ref": "token-alert-update",
+        "ref": "patroni-token-rotation",
         "repo": "bitte-cells",
         "type": "github"
       }
