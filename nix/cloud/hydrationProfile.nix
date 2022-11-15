@@ -86,6 +86,13 @@ in {
           };
         };
 
+        consul.patroni = {
+          vaultConsulSecretBackendRole = {
+            ttl = "3600";
+            max_ttl = "3600";
+          };
+        };
+
         nomad = {
           admin = {
             description = "Admin policies";
