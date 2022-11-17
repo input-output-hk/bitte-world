@@ -1,0 +1,7 @@
+{
+  users.users.root.initialHashedPassword = "$6$Q0mBmARsDnhN/QSd$SV4oo8nh9ngzU/jBdEGRrlZWCR4UsmYPjRvn0jTgpJk1YqYcCFVfqzke3Ujd4WX4//zfLn6Rzxt5D.FjqkyUK/";
+
+  users.users.root.openssh.authorizedKeys.keys = [
+    "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDN/RkN1XNNAq1HThtxDNIqNFpPcg4UOTibiYTQzSygIEAoMIMkv/O2nFqDwp0anwO3YPP0oF21fOqhdIaYEVy/Pg6pxkvdi8caRPd/fa5a+5z35XtwfNKFE7MOorOpXGvNxj40PdNOQwgcwdycqWB6p8Uqf/+byN3qvAW9qv/xirCbTcv7arjp+GApQGmYgcsH5JMQPNrojeXA4I4CT1K4m2nN9r+8lCImPGtP4eFEPQkO4xYaNv/9De3g8je1BXnwBJDhQiyeRzHbGa3iKJvfTf7iYGMFYz6/GGepTptxtM+V39tIsWOIPNXpBH9fVmzG65EmdCiRaLIU9w1J12PF9v78U80StGV0nCPZccVs6NLDW+QZHTh/BXqJyyC3Lknh/enBVZLT5h/zqMY8sjcvX/k1TFHoFKjoOTqI7klGXBhp2g1Bg0vbYAP0awUuvkO+rnHYHCtOGU6Urlzev4gWX3TDq1JB0tbKKsZiiD13Cpi+UgJjlkfkMiD4UQsI/OAMX2vAC1HoiUM080tplKd7RHaLG+GA/yWp1avkfy8ZKWNmVhe24JfAzBQelssYkbGahqHU6+UjB8IxxjCm+DWpBaJFTgerWLIFZR4/V+i2lN0XeBUeE+mgTL36xqdfUmmJoHQeLcM+p/HHOc5RyXxdPVHpYzl3pDqzZIceSeujQw=="
+  ];
+}

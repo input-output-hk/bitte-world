@@ -296,47 +296,95 @@ in {
       };
 
       awsExtNodes = let
+        # For each new machine provisioning to equinix:
+        #   1) TF plan/apply in the `equinix` workspace to get the initial machine provisioning done
+        #   2) Record the privateIP attr that the machine is assigned in the nix metal code
+        #   3) Add the provisioned machine to ssh config for deploy-rs to utilize
+        #   4) Update the encrypted ssh config file with the new machine so others can easily pull the ssh config
+        #   5) Pull the /etc/nixos files from the provisioned machine and apply as a machine module
+        #   6) Deploy again with proper private ip, provisioning configuration and bitte stack modules applied
+        #
+        #   TODO:
+        #     - Streamline and automate the above manual workflow
+        #     - ZFS client services (only assume aws clients, not awsExt clients are ZFS)
+        #
         deployType = "awsExt";
+        node_class = "equinix";
+        primaryInterface = "bond0";
         project = "benchmarking";
+        role = "client";
+
+        awsExtCredsAttrs = {
+          AWS_CONFIG_FILE = "/root/.aws/config";
+          AWS_SHARED_CREDENTIALS_FILE = "/root/.aws/credentials";
+        };
+
+        awsExtCredsShell = ''
+          export AWS_CONFIG_FILE="/root/.aws/config"
+          export AWS_SHARED_CREDENTIALS_FILE="/root/.aws/credentials"
+        '';
       in {
         test = {
-          inherit deployType;
-
-          # role = "default";
-          role = "client";
-
-          # Should be inherited properly from coreNodeType
-          # datacenter = "eu-central-1";
-          # domain = config.cluster.domain;
-
-          node_class = "equinix";
-          primaryInterface = "bond0";
-
+          inherit deployType node_class primaryInterface role;
           equinix.project = project;
-
-          # 1) Deploy
-          # 2) Record privateIP (not assignable during prov)
-          # 3) TODO: ZFS client services (only assume aws clients, not awsExt clients are ZFS)
-          # 4) Deploy post prov as there is a dep on privateIP being corrected first
-          privateIP = "145.40.96.133";
+          privateIP = "10.12.100.1";
 
           modules = [
             (bitte + /profiles/client.nix)
             ./equinix/test/configuration.nix
-            ./ziti-edge-tunnel.nix
-            ({
-              lib,
-              config,
-              ...
-            }: {
+            openziti.nixosModules.ziti-edge-tunnel
+            {
               # Required due to Equinix networkd default and wireless dhcp default
               networking.useDHCP = false;
-              services.dnsmasq.enable = lib.mkOverride 10 false;
-              services.ziti-edge-tunnel = {
-                enable = true;
-                enableResolved = false;
+
+              services.ziti-edge-tunnel.enable = true;
+
+              # Get sops working in systemd awsExt
+              secrets.install = {
+                certs.preScript = awsExtCredsShell;
+                consul-server.preScript = awsExtCredsShell;
+                github.preScript = awsExtCredsShell;
+                nomad-server.preScript = awsExtCredsShell;
               };
-            })
+
+              # Get vault-agent working in systemd awsExt
+              systemd.services = {
+                vault-agent.environment = awsExtCredsAttrs;
+                promtail.environment = awsExtCredsAttrs;
+              };
+            }
+          ];
+        };
+
+        test2 = {
+          inherit deployType node_class primaryInterface role;
+          equinix.project = project;
+          privateIP = "10.12.100.3";
+
+          modules = [
+            (bitte + /profiles/client.nix)
+            ./equinix/test2/configuration.nix
+            openziti.nixosModules.ziti-edge-tunnel
+            {
+              # Required due to Equinix networkd default and wireless dhcp default
+              networking.useDHCP = false;
+
+              # services.ziti-edge-tunnel.enable = true;
+
+              # Get sops working in systemd awsExt
+              secrets.install = {
+                certs.preScript = awsExtCredsShell;
+                consul-server.preScript = awsExtCredsShell;
+                github.preScript = awsExtCredsShell;
+                nomad-server.preScript = awsExtCredsShell;
+              };
+
+              # Get vault-agent working in systemd awsExt
+              systemd.services = {
+                vault-agent.environment = awsExtCredsAttrs;
+                promtail.environment = awsExtCredsAttrs;
+              };
+            }
           ];
         };
       };
