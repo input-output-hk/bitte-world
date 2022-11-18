@@ -315,42 +315,89 @@ in {
         role = "client";
 
         awsExtCredsAttrs = {
-          AWS_CONFIG_FILE = "/root/.aws/config";
-          AWS_SHARED_CREDENTIALS_FILE = "/root/.aws/credentials";
+          AWS_CONFIG_FILE = "/etc/aws/config";
+          AWS_SHARED_CREDENTIALS_FILE = "/etc/aws/credentials";
         };
 
         awsExtCredsShell = ''
-          export AWS_CONFIG_FILE="/root/.aws/config"
-          export AWS_SHARED_CREDENTIALS_FILE="/root/.aws/credentials"
+          export AWS_CONFIG_FILE="/etc/aws/config"
+          export AWS_SHARED_CREDENTIALS_FILE="/etc/aws/credentials"
         '';
+
+        baseEquinixMachineConfig = machineName: ./equinix/${machineName}/configuration.nix;
+
+        baseEquinixModuleConfig = {
+          config,
+          lib,
+          pkgs,
+          ...
+        }: {
+          # Required due to Equinix networkd default and wireless dhcp default
+          networking.useDHCP = false;
+
+          # Get sops working in systemd awsExt
+          secrets.install = {
+            certs.preScript = awsExtCredsShell;
+            consul-server.preScript = awsExtCredsShell;
+            github.preScript = awsExtCredsShell;
+            nomad-server.preScript = awsExtCredsShell;
+          };
+
+          # Get vault-agent working in systemd awsExt
+          systemd.services = {
+            consul.environment = awsExtCredsAttrs;
+            vault-agent.environment = awsExtCredsAttrs;
+            promtail.environment = awsExtCredsAttrs;
+          };
+        };
       in {
+        # For this PoC, turn the test into an equinix ZTNA gateway
         test = {
           inherit deployType node_class primaryInterface role;
           equinix.project = project;
           privateIP = "10.12.100.1";
 
           modules = [
-            (bitte + /profiles/client.nix)
-            ./equinix/test/configuration.nix
+            # Required equinix common and machine specific module config
+            baseEquinixModuleConfig
+            (baseEquinixMachineConfig "test")
+
+            # Machine custom config
+            inputs.bitte.profiles.common
+            inputs.bitte.profiles.consul-common
+            inputs.bitte.profiles.vault-client
             openziti.nixosModules.ziti-edge-tunnel
             {
-              # Required due to Equinix networkd default and wireless dhcp default
-              networking.useDHCP = false;
-
+              boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
               services.ziti-edge-tunnel.enable = true;
 
-              # Get sops working in systemd awsExt
-              secrets.install = {
-                certs.preScript = awsExtCredsShell;
-                consul-server.preScript = awsExtCredsShell;
-                github.preScript = awsExtCredsShell;
-                nomad-server.preScript = awsExtCredsShell;
+              # Vault agent does not seem to recognize successful lookups while resolved is in dnssec allow-downgrade mode
+              services.resolved.dnssec = "false";
+
+              # Ensure dnsmasq stays as the primary resolver while resolved is in use
+              services.resolved.extraConfig = "Domains=~.";
+
+              networking = {
+                vlans = {
+                  vlan1000 = {
+                    id = 1000;
+                    interface = "bond0";
+                  };
+                };
+                interfaces.vlan1000.ipv4.addresses = [
+                  {
+                    address = "192.168.1.1";
+                    prefixLength = 24;
+                  }
+                ];
               };
 
-              # Get vault-agent working in systemd awsExt
-              systemd.services = {
-                vault-agent.environment = awsExtCredsAttrs;
-                promtail.environment = awsExtCredsAttrs;
+              systemd.network.networks = {
+                "40-vlan1000" = {
+                  # Bug in systemd < 251.6 requires this to avoid unending "configuring" of the iface
+                  # Ref: https://github.com/systemd/systemd/issues/24717
+                  networkConfig.LinkLocalAddressing = "no";
+                };
               };
             }
           ];
@@ -362,29 +409,47 @@ in {
           privateIP = "10.12.100.3";
 
           modules = [
+            # Required equinix common and machine specific module config
+            baseEquinixModuleConfig
+            (baseEquinixMachineConfig "test2")
+
+            # Machine custom config
             (bitte + /profiles/client.nix)
-            ./equinix/test2/configuration.nix
-            openziti.nixosModules.ziti-edge-tunnel
-            {
-              # Required due to Equinix networkd default and wireless dhcp default
-              networking.useDHCP = false;
-
-              # services.ziti-edge-tunnel.enable = true;
-
-              # Get sops working in systemd awsExt
-              secrets.install = {
-                certs.preScript = awsExtCredsShell;
-                consul-server.preScript = awsExtCredsShell;
-                github.preScript = awsExtCredsShell;
-                nomad-server.preScript = awsExtCredsShell;
+            ({...}: {
+              systemd.services.systemd-networkd.environment.SYSTEMD_LOG_LEVEL = "debug";
+              networking = {
+                vlans = {
+                  vlan1000 = {
+                    id = 1000;
+                    interface = "bond0";
+                  };
+                };
+                interfaces.vlan1000.ipv4.addresses = [
+                  {
+                    address = "192.168.1.3";
+                    prefixLength = 24;
+                  }
+                ];
               };
 
-              # Get vault-agent working in systemd awsExt
-              systemd.services = {
-                vault-agent.environment = awsExtCredsAttrs;
-                promtail.environment = awsExtCredsAttrs;
+              systemd.network.networks = {
+                "40-vlan1000" = {
+                  # Bug in systemd < 251.6 requires this to avoid unending "configuring" of the iface
+                  # Ref: https://github.com/systemd/systemd/issues/24717
+                  networkConfig.LinkLocalAddressing = "no";
+
+                  routes = [
+                    {
+                      routeConfig = {
+                        Gateway = "192.168.1.1";
+                        GatewayOnLink = true;
+                        Destination = "172.16.0.0/24";
+                      };
+                    }
+                  ];
+                };
               };
-            }
+            })
           ];
         };
       };
