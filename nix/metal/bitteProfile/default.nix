@@ -34,8 +34,14 @@ in {
             cidrRange = "10.10.0.0/24";
           }
           {
+            # Matches the equinix assigned project private IP block
             gatewayCoreNodeName = "zt";
-            cidrRange = "10.11.0.0/24";
+            cidrRange = "10.12.100.0/25";
+          }
+          {
+            # Matches the equinix assigned project private layer2 vlan IP block
+            gatewayCoreNodeName = "zt";
+            cidrRange = "192.168.1.0/24";
           }
         ];
       };
@@ -54,6 +60,11 @@ in {
             systemd.services.nomad.serviceConfig = {
               JobTimeoutSec = "600s";
               JobRunningTimeoutSec = "600s";
+            };
+
+            services.consul.extraConfig.gossipLan = {
+              probeTimeout = "10000ms";
+              suspicionMult = 10;
             };
           })
         ];
@@ -130,6 +141,13 @@ in {
           modules = [
             bitte.profiles.core
             bitte.profiles.bootstrapper
+            ({...}: {
+              services.consul.logLevel = lib.mkForce "trace";
+              services.consul.extraConfig.gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
+            })
           ];
 
           securityGroupRules = {
@@ -145,6 +163,13 @@ in {
 
           modules = [
             bitte.profiles.core
+            ({...}: {
+              services.consul.logLevel = lib.mkForce "trace";
+              services.consul.extraConfig.gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
+            })
           ];
 
           securityGroupRules = {
@@ -160,6 +185,13 @@ in {
 
           modules = [
             bitte.profiles.core
+            ({...}: {
+              services.consul.logLevel = lib.mkForce "trace";
+              services.consul.extraConfig.gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
+            })
           ];
 
           securityGroupRules = {
@@ -216,6 +248,12 @@ in {
             # routing machine nixosProfile inclusion on infraType = "aws", and this is
             # an infraType "awsExt" experimental cluster.
             tempo.nixosProfiles.routing
+            {
+              services.consul.extraConfig.gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
+            }
           ];
 
           securityGroupRules = {
@@ -246,6 +284,10 @@ in {
               ...
             }: {
               boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
+              services.consul.extraConfig.gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
               services = {
                 ziti-controller = {
                   enable = true;
@@ -349,6 +391,29 @@ in {
             vault-agent.environment = awsExtCredsAttrs;
             promtail.environment = awsExtCredsAttrs;
           };
+
+          services.consul = {
+            # Equinix has both public and private IP bound to the bond0 primary interface and consul
+            # will otherwise choose the public interface to adverstise on without this modification.
+            advertiseAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "192.168.1.0/24" | attr "address" }}'';
+            bindAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "192.168.1.0/24" | attr "address" }}'';
+
+            logLevel = lib.mkForce "trace";
+            extraConfig = {
+              gossipLan = {
+                probeTimeout = "10000ms";
+                suspicionMult = 10;
+              };
+            };
+          };
+        };
+
+        mkRoute = gw: destCidr: {
+          routeConfig = {
+            Gateway = gw;
+            GatewayOnLink = true;
+            Destination = destCidr;
+          };
         };
       in {
         # For this PoC, turn the test into an equinix ZTNA gateway
@@ -369,6 +434,7 @@ in {
             openziti.nixosModules.ziti-edge-tunnel
             {
               boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
+
               services.ziti-edge-tunnel.enable = true;
 
               # Vault agent does not seem to recognize successful lookups while resolved is in dnssec allow-downgrade mode
@@ -439,13 +505,10 @@ in {
                   networkConfig.LinkLocalAddressing = "no";
 
                   routes = [
-                    {
-                      routeConfig = {
-                        Gateway = "192.168.1.1";
-                        GatewayOnLink = true;
-                        Destination = "172.16.0.0/24";
-                      };
-                    }
+                    (mkRoute "192.168.1.1" "172.16.0.0/16")
+                    (mkRoute "192.168.1.1" "10.24.0.0/16")
+                    (mkRoute "192.168.1.1" "10.32.0.0/16")
+                    (mkRoute "192.168.1.1" "10.52.0.0/16")
                   ];
                 };
               };
