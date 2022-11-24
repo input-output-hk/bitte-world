@@ -328,111 +328,98 @@ in {
 
         baseEquinixMachineConfig = machineName: ./equinix/${machineName}/configuration.nix;
 
-        baseEquinixModuleConfig = {
-          config,
-          lib,
-          pkgs,
-          ...
-        }: {
-          networking = {
+        baseEquinixModuleConfig = [
+          (bitte + /profiles/client.nix)
+          openziti.nixosModules.ziti-edge-tunnel
+          ({
+            pkgs,
+            lib,
+            config,
+            ...
+          }: {
             # Required due to Equinix networkd default and wireless dhcp default
-            useDHCP = false;
+            networking.useDHCP = false;
 
-            # Required for packets returning along the vlan network with custom routes
-            # to be accepted back into the primary private 10.x.y.z bond0 interface.
-            firewall = {
-              checkReversePath = "loose";
-              logReversePathDrops = true;
+            services.consul = {
+              # Equinix has both public and private IP bound to the bond0 primary interface and consul
+              # will otherwise choose the public interface to adverstise on without this modification.
+              advertiseAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
+              bindAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
             };
 
-            # Required for packets to have a defined route to the ZTNA machine.
-            vlans = {
-              vlan1000 = {
-                id = 1000;
-                interface = "bond0";
-              };
+            # Get sops working in systemd awsExt
+            secrets.install = {
+              certs.preScript = awsExtCredsShell;
+              consul-server.preScript = awsExtCredsShell;
+              github.preScript = awsExtCredsShell;
+              nomad-server.preScript = awsExtCredsShell;
             };
-          };
 
-          systemd.network.networks = {
-            "40-vlan1000" = {
-              # Bug in systemd < 251.6 requires this to avoid unending "configuring" of the iface
-              # Ref: https://github.com/systemd/systemd/issues/24717
-              networkConfig.LinkLocalAddressing = "no";
+            # Get vault-agent working in systemd awsExt
+            systemd.services = {
+              consul.environment = awsExtCredsAttrs;
+              vault-agent.environment = awsExtCredsAttrs;
+              promtail.environment = awsExtCredsAttrs;
+              systemd-networkd.environment.SYSTEMD_LOG_LEVEL = "debug";
             };
-          };
 
-          services.consul = {
-            # Equinix has both public and private IP bound to the bond0 primary interface and consul
-            # will otherwise choose the public interface to adverstise on without this modification.
-            advertiseAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
-            bindAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
-          };
+            services.ziti-edge-tunnel.enable = true;
 
-          # Get sops working in systemd awsExt
-          secrets.install = {
-            certs.preScript = awsExtCredsShell;
-            consul-server.preScript = awsExtCredsShell;
-            github.preScript = awsExtCredsShell;
-            nomad-server.preScript = awsExtCredsShell;
-          };
+            services.resolved = {
+              # Vault agent does not seem to recognize successful lookups while resolved is in dnssec allow-downgrade mode
+              dnssec = "false";
 
-          # Get vault-agent working in systemd awsExt
-          systemd.services = {
-            consul.environment = awsExtCredsAttrs;
-            vault-agent.environment = awsExtCredsAttrs;
-            promtail.environment = awsExtCredsAttrs;
+              # Ensure dnsmasq stays as the primary resolver while resolved is in use
+              extraConfig = "Domains=~.";
+            };
 
-            systemd-networkd.environment.SYSTEMD_LOG_LEVEL = "debug";
-          };
-        };
+            # Extra prem diagnostic utils
+            environment.systemPackages = with pkgs; [
+              conntrack-tools
+              ethtool
+              icdiff
+              iptstate
+              tshark
+            ];
 
-        mkRoute = gw: destCidr: {
-          routeConfig = {
-            Gateway = gw;
-            GatewayOnLink = true;
-            Destination = destCidr;
-          };
-        };
+            networking.firewall = {
+              # Equinix machines typically have only two physically connected NICs which are bonded for throughput and HA.
+              # Both public and private IP get assigned to bond0 and therefore we can't open ports to only the private IP interface
+              # without also opening to the public interface using the pre-canned firewall nixos options.  So, we'll clear
+              # the standard client port openings (other than ssh) and re-declare them open for only the private IP.
+              allowedTCPPorts = lib.mkForce [22];
+              allowedTCPPortRanges = lib.mkForce [];
+              allowedUDPPorts = lib.mkForce [];
+              extraCommands = ''
+                # Accept connections to the allowed TCP ports at the private IP.
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 4646 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 4647 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8300 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8301 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8302 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8501 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8502 -j nixos-fw-accept
+
+                # Accept connections to the allowed TCP port ranges at the private IP.
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 22000:32000 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 21000:21255 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 21500:21755 -j nixos-fw-accept
+
+                # Accept packets on the allowed UDP ports at the private IP.
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p udp --dport 8301 -j nixos-fw-accept
+                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p udp --dport 8302 -j nixos-fw-accept
+              '';
+            };
+          })
+        ];
       in {
-        # For this PoC, turn the test into an equinix ZTNA gateway
+        # For this PoC, turn each equinix instance into a ZTHA client connecting to a bidirectional AWS ZTNA gateway service
         test = {
           inherit deployType node_class primaryInterface role;
           equinix.project = project;
           privateIP = "10.12.100.1";
 
-          modules = [
-            # Required equinix common and machine specific module config
-            baseEquinixModuleConfig
-            (baseEquinixMachineConfig "test")
-
-            # Machine custom config
-            inputs.bitte.profiles.common
-            inputs.bitte.profiles.consul-common
-            inputs.bitte.profiles.vault-client
-            openziti.nixosModules.ziti-edge-tunnel
-            {
-              boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
-
-              services.ziti-edge-tunnel.enable = true;
-
-              services.resolved = {
-                # Vault agent does not seem to recognize successful lookups while resolved is in dnssec allow-downgrade mode
-                dnssec = "false";
-
-                # Ensure dnsmasq stays as the primary resolver while resolved is in use
-                extraConfig = "Domains=~.";
-              };
-
-              # Vlan IP with matching 4th octet to the primary private IP.
-              networking.interfaces.vlan1000.ipv4.addresses = [
-                {
-                  address = "192.168.1.1";
-                  prefixLength = 24;
-                }
-              ];
-            }
-          ];
+          modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test")];
         };
 
         test2 = {
@@ -440,35 +427,7 @@ in {
           equinix.project = project;
           privateIP = "10.12.100.3";
 
-          modules = [
-            # Required equinix common and machine specific module config
-            baseEquinixModuleConfig
-            (baseEquinixMachineConfig "test2")
-
-            # Machine custom config
-            (bitte + /profiles/client.nix)
-            ({...}: {
-              # Vlan IP with matching 4th octet to the primary private IP.
-              networking.interfaces.vlan1000.ipv4.addresses = [
-                {
-                  address = "192.168.1.3";
-                  prefixLength = 24;
-                }
-              ];
-
-              systemd.network.networks = {
-                "40-vlan1000" = {
-                  # Required CIDR routing for zt
-                  routes = [
-                    (mkRoute "192.168.1.1" "172.16.0.0/16")
-                    (mkRoute "192.168.1.1" "10.24.0.0/16")
-                    (mkRoute "192.168.1.1" "10.32.0.0/16")
-                    (mkRoute "192.168.1.1" "10.52.0.0/16")
-                  ];
-                };
-              };
-            })
-          ];
+          modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test2")];
         };
       };
     };
