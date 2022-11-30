@@ -24,7 +24,7 @@ in {
       name = "bitte-world";
       infraType = "awsExt";
 
-      adminNames = ["johnalotoski"];
+      adminNames = ["john.lotoski"];
       # adminGithubTeamNames = lib.mkForce [ "non-existent-team" ];
       developerGithubNames = ["shlevy"];
       developerGithubTeamNames = [];

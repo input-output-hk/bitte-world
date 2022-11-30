@@ -19,7 +19,7 @@ in {
     securityGroupRules = bittelib.securityGroupRules config;
   in {
     secrets.encryptedRoot = ./encrypted;
-    age.encryptedRoot = ./encrypted-prem;
+    # age.encryptedRoot = ./encrypted-prem;
 
     cluster = {
       s3CachePubKey = lib.fileContents ./encrypted/nix-public-key-file;
@@ -285,14 +285,19 @@ in {
           ];
 
           securityGroupRules = {
-            inherit (securityGroupRules) internet internal ssh;
             inherit
-              (import ./sg.nix {inherit terralib lib;} config)
+              (securityGroupRules)
+              internal
+              internet
+              ssh
               ziti-controller-rest
               ziti-controller-mgmt
               ziti-router-edge
               ziti-router-fabric
               ;
+            # inherit
+            #   (import ./sg.nix {inherit terralib lib;} config)
+            #   ;
           };
         };
       };
