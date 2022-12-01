@@ -434,6 +434,22 @@ in {
 
           modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test2")];
         };
+
+        # test3 = {
+        #   inherit deployType node_class primaryInterface role;
+        #   equinix.project = project;
+        #   privateIP = "10.12.100.5";
+
+        #   modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test3")];
+        # };
+
+        # test4 = {
+        #   inherit deployType node_class primaryInterface role;
+        #   equinix.project = project;
+        #   privateIP = "1.2.3.4";
+
+        #   # modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test3")];
+        # };
       };
     };
   };
