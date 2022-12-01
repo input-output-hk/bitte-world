@@ -321,20 +321,12 @@ in {
         project = "benchmarking";
         role = "client";
 
-        awsExtCredsAttrs = {
-          AWS_CONFIG_FILE = "/etc/aws/config";
-          AWS_SHARED_CREDENTIALS_FILE = "/etc/aws/credentials";
-        };
-
-        awsExtCredsShell = ''
-          export AWS_CONFIG_FILE="/etc/aws/config"
-          export AWS_SHARED_CREDENTIALS_FILE="/etc/aws/credentials"
-        '';
-
         baseEquinixMachineConfig = machineName: ./equinix/${machineName}/configuration.nix;
 
         baseEquinixModuleConfig = [
           (bitte + /profiles/client.nix)
+          (bitte + /profiles/multicloud/aws-extended.nix)
+          (bitte + /profiles/multicloud/equinix.nix)
           openziti.nixosModules.ziti-edge-tunnel
           ({
             pkgs,
@@ -342,32 +334,6 @@ in {
             config,
             ...
           }: {
-            # Required due to Equinix networkd default and wireless dhcp default
-            networking.useDHCP = false;
-
-            services.consul = {
-              # Equinix has both public and private IP bound to the bond0 primary interface and consul
-              # will otherwise choose the public interface to adverstise on without this modification.
-              advertiseAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
-              bindAddr = lib.mkForce ''{{ GetPrivateInterfaces | include "network" "10.12.100.0/25" | attr "address" }}'';
-            };
-
-            # Get sops working in systemd awsExt
-            secrets.install = {
-              certs.preScript = awsExtCredsShell;
-              consul-server.preScript = awsExtCredsShell;
-              github.preScript = awsExtCredsShell;
-              nomad-server.preScript = awsExtCredsShell;
-            };
-
-            # Get vault-agent working in systemd awsExt
-            systemd.services = {
-              consul.environment = awsExtCredsAttrs;
-              vault-agent.environment = awsExtCredsAttrs;
-              promtail.environment = awsExtCredsAttrs;
-              systemd-networkd.environment.SYSTEMD_LOG_LEVEL = "debug";
-            };
-
             services.ziti-edge-tunnel.enable = true;
 
             services.resolved = {
@@ -386,35 +352,6 @@ in {
               iptstate
               tshark
             ];
-
-            networking.firewall = {
-              # Equinix machines typically have only two physically connected NICs which are bonded for throughput and HA.
-              # Both public and private IP get assigned to bond0 and therefore we can't open ports to only the private IP interface
-              # without also opening to the public interface using the pre-canned firewall nixos options.  So, we'll clear
-              # the standard client port openings (other than ssh) and re-declare them open for only the private IP.
-              allowedTCPPorts = lib.mkForce [22];
-              allowedTCPPortRanges = lib.mkForce [];
-              allowedUDPPorts = lib.mkForce [];
-              extraCommands = ''
-                # Accept connections to the allowed TCP ports at the private IP.
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 4646 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 4647 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8300 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8301 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8302 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8501 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 8502 -j nixos-fw-accept
-
-                # Accept connections to the allowed TCP port ranges at the private IP.
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 22000:32000 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 21000:21255 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p tcp --dport 21500:21755 -j nixos-fw-accept
-
-                # Accept packets on the allowed UDP ports at the private IP.
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p udp --dport 8301 -j nixos-fw-accept
-                iptables -A nixos-fw -d ${config.currentCoreNode.privateIP}/32 -p udp --dport 8302 -j nixos-fw-accept
-              '';
-            };
           })
         ];
       in {
