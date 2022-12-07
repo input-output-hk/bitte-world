@@ -64,6 +64,9 @@ in {
       bitteWorld = withCategory "bitte-world";
     in
       with nixpkgs; [
+        (bitteWorld {package = lib.hiPrio bitte.legacyPackages.${system}.consul;})
+        (bitteWorld {package = lib.hiPrio bitte.legacyPackages.${system}.nomad;})
+        (bitteWorld {package = lib.hiPrio bitte.legacyPackages.${system}.vault-bin;})
         (bitteWorld {package = deploy-rs.defaultPackage;})
         (bitteWorld {package = httpie;})
       ];

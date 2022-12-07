@@ -64,7 +64,18 @@ in {
             inherit region desiredCapacity instanceType volumeSize node_class asgSuffix;
             modules =
               defaultModules
-              ++ lib.optional (opts ? withPatroni && opts.withPatroni == true) (patroni.nixosProfiles.client node_class);
+              ++ lib.optional (opts ? withPatroni && opts.withPatroni == true) (patroni.nixosProfiles.client node_class)
+              ++ lib.optional (node_class == "test")
+              ({
+                lib,
+                bittelib,
+                ...
+              }: {
+                services.nomad.client.host_volume.host-nix-mount = {
+                  path = "/nix";
+                  read_only = false;
+                };
+              });
           }
           // extraConfig;
         # -------------------------
@@ -318,8 +329,11 @@ in {
         deployType = "awsExt";
         node_class = "equinix";
         primaryInterface = "bond0";
-        project = "benchmarking";
         role = "client";
+
+        # Equinix TF specific attrs
+        plan = "c3.small.x86";
+        project = "benchmarking";
 
         baseEquinixMachineConfig = machineName: ./equinix/${machineName}/configuration.nix;
 
@@ -358,34 +372,18 @@ in {
         # For this PoC, turn each equinix instance into a ZTHA client connecting to a bidirectional AWS ZTNA gateway service
         test = {
           inherit deployType node_class primaryInterface role;
-          equinix.project = project;
+          equinix = {inherit plan project;};
           privateIP = "10.12.100.1";
 
           modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test")];
         };
 
-        test2 = {
-          inherit deployType node_class primaryInterface role;
-          equinix.project = project;
-          privateIP = "10.12.100.3";
-
-          modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test2")];
-        };
-
-        # test3 = {
+        # test2 = {
         #   inherit deployType node_class primaryInterface role;
         #   equinix.project = project;
-        #   privateIP = "10.12.100.5";
+        #   privateIP = "10.12.100.3";
 
-        #   modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test3")];
-        # };
-
-        # test4 = {
-        #   inherit deployType node_class primaryInterface role;
-        #   equinix.project = project;
-        #   privateIP = "1.2.3.4";
-
-        #   # modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test3")];
+        #   modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test2")];
         # };
       };
     };
