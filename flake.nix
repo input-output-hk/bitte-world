@@ -62,12 +62,12 @@
     (
       let
         system = "x86_64-linux";
-        overlays = [(import ./overlay.nix inputs)];
+        # overlays = [(import ./overlay.nix inputs)];
       in
         bitte.lib.mkBitteStack {
           inherit inputs;
           inherit (inputs) self;
-          inherit overlays;
+          # inherit overlays;
           domain = "bitte.aws.iohkdev.io";
           bitteProfile = inputs.self.${system}.metal.bitteProfile.default;
           hydrationProfile = inputs.self.${system}.cloud.hydrationProfile.default;
