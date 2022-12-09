@@ -75,6 +75,18 @@ in {
                   path = "/nix";
                   read_only = false;
                 };
+
+                boot.kernelPackages = pkgs.linuxPackages.extend (self: super: {
+                  zfs = super.zfs.overrideAttrs (old: {
+                    name = "zfs-kernel-2.1.7-${super.kernel.version}";
+                    src = pkgs.fetchFromGitHub {
+                      owner = "openzfs";
+                      repo = "zfs";
+                      rev = "zfs-2.1.7";
+                      sha256 = "sha256-vLm6RE11nqOCoYXne79JU3nUQnVEUNbwrULwFfghWcI=";
+                    };
+                  });
+                });
               });
           }
           // extraConfig;
