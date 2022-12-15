@@ -380,13 +380,20 @@ in {
         ];
       in {
         # For this PoC, turn each equinix instance into a ZTHA client connecting to a bidirectional AWS ZTNA gateway service
-        test = {
-          inherit deployType node_class primaryInterface role;
-          equinix = {inherit plan project;};
-          privateIP = "10.12.100.1";
+        # test = {
+        #   inherit deployType node_class primaryInterface role;
+        #   equinix = {inherit plan project;};
+        #   privateIP = "10.12.100.1";
 
-          modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test")];
-        };
+        #   modules = baseEquinixModuleConfig ++ [(baseEquinixMachineConfig "test")] ++ [
+        #    ({pkgs, self, ...}: let
+        #      inherit (self.inputs.nixpkgs-nix.legacyPackages.x86_64-linux.nixVersions) nix_2_12;
+        #    in {
+        #      nix.package = nix_2_12;
+        #      environment.systemPackages = [nix_2_12];
+        #    })
+        #   ];
+        # };
 
         # test2 = {
         #   inherit deployType node_class primaryInterface role;
