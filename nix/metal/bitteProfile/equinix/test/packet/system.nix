@@ -24,7 +24,7 @@
           terminal_output serial console
           terminal_input serial console
         '';
-        nix.maxJobs = lib.mkDefault 16;
+        nix.settings.max-jobs = lib.mkDefault 16;
       }
     )
     {

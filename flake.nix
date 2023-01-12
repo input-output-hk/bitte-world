@@ -5,15 +5,14 @@
     n2c.follows = "std/n2c";
     data-merge.follows = "std/dmerge";
     # --- Bitte Stack ----------------------------------------------
-    bitte.url = "github:input-output-hk/bitte/equinix";
-    # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/equinix";
+    bitte.url = "github:input-output-hk/bitte/equinix-2211";
+    # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/equinix-2211";
     bitte-cells.url = "github:input-output-hk/bitte-cells";
     # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/patroni-token-rotation";
     # --------------------------------------------------------------
     # --- Auxiliary Nixpkgs ----------------------------------------
-    # nixpkgs.follows = "bitte/nixpkgs";
-    nixpkgs.url = "github:NixOS/nixpkgs";
-    nixpkgs-nix.url = "github:NixOS/nixpkgs";
+    nixpkgs.follows = "bitte/nixpkgs";
+    nix.follows = "bitte/nix";
     capsules = {
       # Until nixago is implemented, as HEAD currently removes fmt hooks
       url = "github:input-output-hk/devshell-capsules/8dcf0e917848abbe58c58fc5d49069c32cd2f585";
