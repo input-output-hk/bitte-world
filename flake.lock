@@ -5282,11 +5282,11 @@
         "zitiConsole": "zitiConsole"
       },
       "locked": {
-        "lastModified": 1673306618,
-        "narHash": "sha256-sHqmIg7XM9HKQI7hBElSTKv0JQgBgCr9tDEqIJJp2M8=",
+        "lastModified": 1674084903,
+        "narHash": "sha256-yXedvvhr6MTMILn5Xv5u9kzkfEB9giBeAcRFF0avvwc=",
         "owner": "johnalotoski",
         "repo": "openziti-bins",
-        "rev": "ca58fdb65988ad306b3aa9218a0610e2f01207b0",
+        "rev": "adad2c1f36e01294a0e9fc4196baae366b5f1d60",
         "type": "github"
       },
       "original": {
@@ -6635,11 +6635,11 @@
     "zitiConsole": {
       "flake": false,
       "locked": {
-        "lastModified": 1666226159,
-        "narHash": "sha256-QYNd/RNwzYO+oIShIJ16iBP5K3DAXsiVnQepWWNZ9VU=",
+        "lastModified": 1674059097,
+        "narHash": "sha256-qvYLTYKTmlBaS51/OVONEzKXk6GD54AKxNZd3yxGxnY=",
         "owner": "openziti",
         "repo": "ziti-console",
-        "rev": "2c3f28ab6624c095aff4260c176c7492c7298dc2",
+        "rev": "edc053a6f55530f76863b16e559cf7a95e2a88e7",
         "type": "github"
       },
       "original": {
