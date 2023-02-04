@@ -8,46 +8,31 @@
   inherit (constants) args;
   inherit (cell.library) pp;
 in {
-  patroni = let
+  infra = let
     inherit
-      (constants.patroni)
+      (constants.infra)
       # App constants
-      
+
       WALG_S3_PREFIX
       # Job mod constants
-      
+
       patroniMods
+      tempoMods
       ;
   in {
-    database = merge (patroni.nomadCharts.default (args.patroni // {inherit (patroniMods) scaling pkiTtl;})) {
+    database = merge (patroni.nomadCharts.default (args.infra // {inherit (patroniMods) scaling pkiTtl;})) {
       job.database.constraint = append [
         {
           operator = "distinct_property";
           attribute = "\${attr.platform.aws.placement.availability-zone}";
         }
-        # {
-        #   attribute = "\${attr.unique.platform.aws.instance-id}";
-        #   value = "i-0796efdb55698fe20";
-        # }
       ];
       job.database.group.database.task.patroni.resources = {inherit (patroniMods.resources) cpu memory;};
       job.database.group.database.task.patroni.env = {inherit WALG_S3_PREFIX;};
       job.database.group.database.task.backup-walg.env = {inherit WALG_S3_PREFIX;};
     };
-  };
 
-  tempo = let
-    inherit
-      (constants.tempo)
-      # App constants
-      
-      WALG_S3_PREFIX
-      # Job mod constants
-      
-      tempoMods
-      ;
-  in {
-    tempo = merge (tempo.nomadCharts.default (args.tempo
+    tempo = merge (tempo.nomadCharts.default (args.infra
       // {
         inherit (tempoMods) scaling;
         extraTempo = {

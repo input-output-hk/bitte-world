@@ -5,8 +5,8 @@
     n2c.follows = "std/n2c";
     data-merge.follows = "std/dmerge";
     # --- Bitte Stack ----------------------------------------------
-    bitte.url = "github:input-output-hk/bitte/equinix-2211";
-    # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/equinix-2211";
+    bitte.url = "github:input-output-hk/bitte/nixpkgs-2211";
+    # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/nixpkgs-2211";
     bitte-cells.url = "github:input-output-hk/bitte-cells";
     # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/patroni-token-rotation";
     # --------------------------------------------------------------
@@ -75,8 +75,7 @@
         }
     )
     {
-      patroni = bitte.lib.mkNomadJobs "patroni" nomadEnvs;
-      tempo = bitte.lib.mkNomadJobs "tempo" nomadEnvs;
+      infra = bitte.lib.mkNomadJobs "infra" nomadEnvs;
     }
     (inputs.tullia.fromStd {
       actions = inputs.std.harvest inputs.self ["cloud" "actions"];

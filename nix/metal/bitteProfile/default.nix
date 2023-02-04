@@ -107,11 +107,10 @@ in {
         #   client-$REGION-$INSTANCE_TYPE-$ASG_SUFFIX
       in
         lib.listToAttrs (lib.forEach [
-            (mkAsgs "eu-central-1" 3 "t3a.medium" 100 "patroni" "patroni" {withPatroni = true;} {})
-            (mkAsgs "eu-central-1" 1 "t3a.medium" 100 "tempo" "tempo" {} {})
-            (mkAsgs "eu-central-1" 1 "t3a.small" 100 "test" "test" {} {})
-            (mkAsgs "us-east-2" 1 "t3a.small" 100 "test" "test" {} {})
-            (mkAsgs "eu-west-1" 1 "t3a.small" 100 "test" "test" {} {})
+            (mkAsgs "eu-central-1" 2 "t3a.medium" 100 "infra" "infra" {withPatroni = true;} {})
+            # (mkAsgs "eu-central-1" 1 "t3a.small" 100 "test" "test" {} {})
+            # (mkAsgs "us-east-2" 1 "t3a.small" 100 "test" "test" {} {})
+            # (mkAsgs "eu-west-1" 1 "t3a.small" 100 "test" "test" {} {})
           ]
           (args: let
             attrs =
@@ -144,7 +143,7 @@ in {
 
       coreNodes = {
         core-1 = {
-          instanceType = "t3a.xlarge";
+          instanceType = "t3a.medium";
           privateIP = "172.16.0.10";
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 100;
@@ -160,7 +159,7 @@ in {
         };
 
         core-2 = {
-          instanceType = "t3a.xlarge";
+          instanceType = "t3a.medium";
           privateIP = "172.16.1.10";
           subnet = cluster.vpc.subnets.core-2;
           volumeSize = 100;
@@ -175,7 +174,7 @@ in {
         };
 
         core-3 = {
-          instanceType = "t3a.xlarge";
+          instanceType = "t3a.medium";
           privateIP = "172.16.2.10";
           subnet = cluster.vpc.subnets.core-3;
           volumeSize = 100;
@@ -190,7 +189,7 @@ in {
         };
 
         monitoring = {
-          instanceType = "t3a.xlarge";
+          instanceType = "t3a.medium";
           privateIP = "172.16.0.20";
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 300;
