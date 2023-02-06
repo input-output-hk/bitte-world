@@ -5,7 +5,7 @@
     n2c.follows = "std/n2c";
     data-merge.follows = "std/dmerge";
     # --- Bitte Stack ----------------------------------------------
-    bitte.url = "github:input-output-hk/bitte/nixpkgs-2211";
+    bitte.url = "github:input-output-hk/bitte";
     # bitte.url = "path:/home/jlotoski/work/iohk/bitte-wt/nixpkgs-2211";
     bitte-cells.url = "github:input-output-hk/bitte-cells";
     # bitte-cells.url = "path:/home/jlotoski/work/iohk/bitte-cells-wt/patroni-token-rotation";

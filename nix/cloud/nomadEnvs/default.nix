@@ -12,10 +12,10 @@ in {
     inherit
       (constants.infra)
       # App constants
-
+      
       WALG_S3_PREFIX
       # Job mod constants
-
+      
       patroniMods
       tempoMods
       ;
