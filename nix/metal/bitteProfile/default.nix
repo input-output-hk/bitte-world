@@ -264,6 +264,7 @@ in {
             ({
               config,
               pkgs,
+              etcEncrypted,
               ...
             }: {
               boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
@@ -301,6 +302,59 @@ in {
                 ziti-console.enable = true;
                 ziti-edge-tunnel.enable = true;
               };
+
+              networking = {
+                firewall.allowedUDPPorts = [51820];
+                wireguard = {
+                  enable = true;
+                  interfaces.wg-zt = {
+                    listenPort = 51820;
+                    ips = ["10.10.0.254/32"];
+                    privateKeyFile = "/etc/wireguard/private.key";
+                    peers = [
+                      # mm3
+                      {
+                        publicKey = "SCNSJqSbmNpJpucOdqCDabZy1+It/9yEpds50KEjRyc=";
+                        allowedIPs = ["10.10.0.3/32" "10.10.0.103/32"];
+                        persistentKeepalive = 30;
+                      }
+                      # mm4
+                      {
+                        publicKey = "v9tIACN9BsUzy5dx82EW0ruFJUHmyLyTzkxLA5dCbiI=";
+                        allowedIPs = ["10.10.0.4/32" "10.10.0.104/32"];
+                        persistentKeepalive = 30;
+                      }
+                      # mm1-arm
+                      {
+                        publicKey = "ud4AYflwezVBoa/4t3OL/+VWB7J4LNbMn7vtMEsKXgU=";
+                        allowedIPs = ["10.10.0.51/32" "10.10.0.151/32"];
+                        persistentKeepalive = 30;
+                      }
+                      # mm2-arm
+                      {
+                        publicKey = "u3pneYtAowgYoPESBO0OsjNfyb1nEl+r6CoODoc5jHE=";
+                        allowedIPs = ["10.10.0.52/32" "10.10.0.152/32"];
+                        persistentKeepalive = 30;
+                      }
+                    ];
+                  };
+                };
+              };
+
+              secrets.install.zt-wg-private = {
+                source = "${etcEncrypted}/zt-wg-private";
+                target = "/etc/wireguard/private.key";
+                outputType = "binary";
+                script = ''
+                  chmod 0400 /etc/wireguard/private.key
+                '';
+              };
+
+              secrets.install.zt-wg-public = {
+                source = "${etcEncrypted}/zt-wg-public";
+                target = "/etc/wireguard/public.key";
+                outputType = "binary";
+              };
             })
           ];
 
@@ -315,9 +369,10 @@ in {
               ziti-router-edge
               ziti-router-fabric
               ;
-            # inherit
-            #   (import ./sg.nix {inherit terralib lib;} config)
-            #   ;
+            inherit
+              (import ./sg.nix {inherit terralib lib;} config)
+              wg
+              ;
           };
         };
       };

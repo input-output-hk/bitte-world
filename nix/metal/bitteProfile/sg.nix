@@ -8,4 +8,10 @@
 
   global = ["0.0.0.0/0"];
   internal = [config.cluster.vpc.cidr] ++ (lib.forEach awsAsgVpcs (vpc: vpc.cidr));
-in {}
+in {
+  wg = {
+    port = 51820;
+    protocols = ["udp"];
+    cidrs = global;
+  };
+}
