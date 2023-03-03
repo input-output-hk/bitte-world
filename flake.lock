@@ -4066,6 +4066,22 @@
         "type": "github"
       }
     },
+    "nixpkgs-darwin": {
+      "locked": {
+        "lastModified": 1676998680,
+        "narHash": "sha256-61gxdL3bqHWnRSiYq+sKWbSX6tuwaRnYfPvhpRK011s=",
+        "owner": "NixOS",
+        "repo": "nixpkgs",
+        "rev": "a3d745e701c337e65ef467d5a9400d9336a303a1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "NixOS",
+        "ref": "nixpkgs-22.11-darwin",
+        "repo": "nixpkgs",
+        "type": "github"
+      }
+    },
     "nixpkgs-docker": {
       "locked": {
         "lastModified": 1652739558,
@@ -5289,17 +5305,22 @@
         "flake-parts": "flake-parts",
         "napalm": "napalm",
         "nixpkgs": "nixpkgs_49",
+        "nixpkgs-darwin": "nixpkgs-darwin",
         "zitiConsole": "zitiConsole"
       },
       "locked": {
-        "lastModified": 1676578121,
-        "narHash": "sha256-MMtWDwiZTnJZ1Y4MU8xZSkPSs/2hAYnhNOGFlfA1YGM=",
-        "path": "/home/jlotoski/work/johnalotoski/openziti-bins-wt/openziti-bins",
-        "type": "path"
+        "lastModified": 1677282828,
+        "narHash": "sha256-PrcbyVIgqIl+H7depvalH3pmZbzJ4KqzLJGI1vOR1bM=",
+        "owner": "johnalotoski",
+        "repo": "openziti-bins",
+        "rev": "3d8a34ffadd1c29a21c5344b26ecc74b9d640418",
+        "type": "github"
       },
       "original": {
-        "path": "/home/jlotoski/work/johnalotoski/openziti-bins-wt/openziti-bins",
-        "type": "path"
+        "owner": "johnalotoski",
+        "ref": "darwin",
+        "repo": "openziti-bins",
+        "type": "github"
       }
     },
     "ops-lib": {

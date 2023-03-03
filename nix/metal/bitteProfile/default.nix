@@ -38,6 +38,11 @@ in {
             gatewayCoreNodeName = "zt";
             cidrRange = "10.12.100.0/25";
           }
+          {
+            # Extends ziti DNS over CGNAT block
+            gatewayCoreNodeName = "zt";
+            cidrRange = "100.64.0.0/16";
+          }
         ];
       };
 
@@ -200,6 +205,7 @@ in {
             # For fast oci build iteration
             (bitte + "/profiles/auxiliaries/docker.nix")
             ({
+              nodeName,
               etcEncrypted,
               dockerAuth,
               ...
@@ -208,6 +214,81 @@ in {
                 source = "${etcEncrypted}/docker-passwords.json";
                 target = dockerAuth;
               };
+
+              # Allow dnsmasq to resolve upstream ziti queries for ziti cluster DNS resolution
+              services.dnsmasq.extraConfig = ''
+                server=/ziti/${
+                  if nodeName == "zt"
+                  then "100.64.0.2"
+                  else cluster.coreNodes.zt.privateIP
+                }
+              '';
+
+              services.prometheus.exporters.blackbox = lib.mkForce {
+                enable = true;
+                configFile = pkgs.toPrettyJSON "blackbox-exporter.yaml" {
+                  modules = {
+                    ssh_banner = {
+                      prober = "tcp";
+                      timeout = "10s";
+                      tcp = {
+                        preferred_ip_protocol = "ip4";
+                        query_response = [
+                          {
+                            expect = "^SSH-2.0-";
+                            send = "SSH-2.0-blackbox-ssh-check";
+                          }
+                        ];
+                      };
+                    };
+                  };
+                };
+              };
+
+              services.vmagent.promscrapeConfig = let
+                mkTarget = host: port: machine: {
+                  targets = ["${host}:${toString port}"];
+                  labels.alias = machine;
+                };
+              in [
+                {
+                  job_name = "blackbox-ssh-darwin";
+                  scrape_interval = "60s";
+                  metrics_path = "/probe";
+                  params.module = ["ssh_banner"];
+                  static_configs = [
+                    (mkTarget "mm3.mmfarm.bitte-world.ziti" 22 "mm3-host")
+                    (mkTarget "mm4.mmfarm.bitte-world.ziti" 22 "mm4-host")
+                    (mkTarget "mm-arm1.mmfarm.bitte-world.ziti" 22 "mm-arm1-host")
+                    (mkTarget "mm-arm2.mmfarm.bitte-world.ziti" 22 "mm-arm2-host")
+                  ];
+                  relabel_configs = [
+                    {
+                      source_labels = ["__address__"];
+                      target_label = "__param_target";
+                    }
+                    {
+                      source_labels = ["__param_target"];
+                      target_label = "instance";
+                    }
+                    {
+                      replacement = "127.0.0.1:9115";
+                      target_label = "__address__";
+                    }
+                  ];
+                }
+                {
+                  job_name = "mmfarm-hosts";
+                  scrape_interval = "60s";
+                  metrics_path = "/metrics";
+                  static_configs = [
+                    (mkTarget "mm3.mmfarm.bitte-world.ziti" 9100 "mm3-host")
+                    (mkTarget "mm4.mmfarm.bitte-world.ziti" 9100 "mm4-host")
+                    (mkTarget "mm-arm1.mmfarm.bitte-world.ziti" 9100 "mm-arm1-host")
+                    (mkTarget "mm-arm2.mmfarm.bitte-world.ziti" 9100 "mm-arm2-host")
+                  ];
+                }
+              ];
             })
           ];
 
@@ -244,9 +325,11 @@ in {
           };
         };
 
-        zt = {
-          instanceType = "t3a.small";
+        zt = let
           privateIP = "172.16.0.30";
+        in {
+          inherit privateIP;
+          instanceType = "t3a.small";
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 100;
           route53.domains = ["zt.${cluster.domain}"];
@@ -263,11 +346,21 @@ in {
             ./ziti-register.nix
             ({
               config,
+              nodeName,
               pkgs,
               etcEncrypted,
               ...
             }: {
               boot.kernel.sysctl."net.ipv4.conf.all.forwarding" = true;
+
+              # Allow dnsmasq to resolve upstream ziti queries for ziti cluster DNS resolution
+              services.dnsmasq.extraConfig = ''
+                server=/ziti/${
+                  if nodeName == "zt"
+                  then "100.64.0.2"
+                  else cluster.coreNodes.zt.privateIP
+                }
+              '';
 
               services = {
                 ziti-controller = {
@@ -299,8 +392,12 @@ in {
                   '';
                 };
 
+                ziti-edge-tunnel = {
+                  enable = true;
+                  dnsUpstream = null;
+                };
+
                 ziti-console.enable = true;
-                ziti-edge-tunnel.enable = true;
               };
 
               networking = {
