@@ -222,6 +222,7 @@ in {
                   then "100.64.0.2"
                   else cluster.coreNodes.zt.privateIP
                 }
+                neg-ttl=10
               '';
 
               services.prometheus.exporters.blackbox = lib.mkForce {
@@ -360,6 +361,7 @@ in {
                   then "100.64.0.2"
                   else cluster.coreNodes.zt.privateIP
                 }
+                neg-ttl=10
               '';
 
               services = {

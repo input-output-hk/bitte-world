@@ -25,7 +25,8 @@
     tullia.url = "github:input-output-hk/tullia";
     deploy-rs.url = "github:serokell/deploy-rs";
     # --------------------------------------------------------------
-    openziti.url = "github:johnalotoski/openziti-bins/darwin";
+    openziti.url = "github:johnalotoski/openziti-bins";
+    # openziti.url = "path:/home/jlotoski/work/johnalotoski/openziti-bins-wt/darwin";
   };
 
   outputs = inputs: let
