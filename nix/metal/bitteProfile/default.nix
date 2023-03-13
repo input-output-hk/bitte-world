@@ -258,10 +258,10 @@ in {
                   metrics_path = "/probe";
                   params.module = ["ssh_banner"];
                   static_configs = [
-                    (mkTarget "mm3.mmfarm.bitte-world.ziti" 22 "mm3-host")
-                    (mkTarget "mm4.mmfarm.bitte-world.ziti" 22 "mm4-host")
-                    (mkTarget "mm-arm1.mmfarm.bitte-world.ziti" 22 "mm-arm1-host")
-                    (mkTarget "mm-arm2.mmfarm.bitte-world.ziti" 22 "mm-arm2-host")
+                    (mkTarget "mm-intel3.darwin.bitte-world.ziti" 22 "mm-intel3-host")
+                    (mkTarget "mm-intel4.darwin.bitte-world.ziti" 22 "mm-intel4-host")
+                    (mkTarget "ms-arm1.darwin.bitte-world.ziti" 22 "ms-arm1-host")
+                    (mkTarget "ms-arm2.darwin.bitte-world.ziti" 22 "ms-arm2-host")
                   ];
                   relabel_configs = [
                     {
@@ -279,14 +279,14 @@ in {
                   ];
                 }
                 {
-                  job_name = "mmfarm-hosts";
+                  job_name = "darwin-hosts";
                   scrape_interval = "60s";
                   metrics_path = "/metrics";
                   static_configs = [
-                    (mkTarget "mm3.mmfarm.bitte-world.ziti" 9100 "mm3-host")
-                    (mkTarget "mm4.mmfarm.bitte-world.ziti" 9100 "mm4-host")
-                    (mkTarget "mm-arm1.mmfarm.bitte-world.ziti" 9100 "mm-arm1-host")
-                    (mkTarget "mm-arm2.mmfarm.bitte-world.ziti" 9100 "mm-arm2-host")
+                    (mkTarget "mm-intel3.darwin.bitte-world.ziti" 9100 "mm-intel3-host")
+                    (mkTarget "mm-intel4.darwin.bitte-world.ziti" 9100 "mm-intel4-host")
+                    (mkTarget "ms-arm1.darwin.bitte-world.ziti" 9100 "ms-arm1-host")
+                    (mkTarget "ms-arm2.darwin.bitte-world.ziti" 9100 "ms-arm2-host")
                   ];
                 }
               ];
