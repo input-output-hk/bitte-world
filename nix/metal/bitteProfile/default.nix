@@ -194,7 +194,7 @@ in {
         };
 
         monitoring = {
-          instanceType = "t3a.medium";
+          instanceType = "r5a.large";
           privateIP = "172.16.0.20";
           subnet = cluster.vpc.subnets.core-1;
           volumeSize = 300;
@@ -224,72 +224,6 @@ in {
                 }
                 neg-ttl=10
               '';
-
-              services.prometheus.exporters.blackbox = lib.mkForce {
-                enable = true;
-                configFile = pkgs.toPrettyJSON "blackbox-exporter.yaml" {
-                  modules = {
-                    ssh_banner = {
-                      prober = "tcp";
-                      timeout = "10s";
-                      tcp = {
-                        preferred_ip_protocol = "ip4";
-                        query_response = [
-                          {
-                            expect = "^SSH-2.0-";
-                            send = "SSH-2.0-blackbox-ssh-check";
-                          }
-                        ];
-                      };
-                    };
-                  };
-                };
-              };
-
-              services.vmagent.promscrapeConfig = let
-                mkTarget = host: port: machine: {
-                  targets = ["${host}:${toString port}"];
-                  labels.alias = machine;
-                };
-              in [
-                {
-                  job_name = "blackbox-ssh-darwin";
-                  scrape_interval = "60s";
-                  metrics_path = "/probe";
-                  params.module = ["ssh_banner"];
-                  static_configs = [
-                    (mkTarget "mm-intel3.darwin.bitte-world.ziti" 22 "mm-intel3-host")
-                    (mkTarget "mm-intel4.darwin.bitte-world.ziti" 22 "mm-intel4-host")
-                    (mkTarget "ms-arm1.darwin.bitte-world.ziti" 22 "ms-arm1-host")
-                    (mkTarget "ms-arm2.darwin.bitte-world.ziti" 22 "ms-arm2-host")
-                  ];
-                  relabel_configs = [
-                    {
-                      source_labels = ["__address__"];
-                      target_label = "__param_target";
-                    }
-                    {
-                      source_labels = ["__param_target"];
-                      target_label = "instance";
-                    }
-                    {
-                      replacement = "127.0.0.1:9115";
-                      target_label = "__address__";
-                    }
-                  ];
-                }
-                {
-                  job_name = "darwin-hosts";
-                  scrape_interval = "60s";
-                  metrics_path = "/metrics";
-                  static_configs = [
-                    (mkTarget "mm-intel3.darwin.bitte-world.ziti" 9100 "mm-intel3-host")
-                    (mkTarget "mm-intel4.darwin.bitte-world.ziti" 9100 "mm-intel4-host")
-                    (mkTarget "ms-arm1.darwin.bitte-world.ziti" 9100 "ms-arm1-host")
-                    (mkTarget "ms-arm2.darwin.bitte-world.ziti" 9100 "ms-arm2-host")
-                  ];
-                }
-              ];
             })
           ];
 
