@@ -363,15 +363,16 @@
         "std": "std_2"
       },
       "locked": {
-        "lastModified": 1668563313,
-        "narHash": "sha256-db8z0kX1aOs2GWHktiDrw3EOfDKUpifsaHlc1xSC+Ag=",
+        "lastModified": 1684814337,
+        "narHash": "sha256-3skujtrPFX5WsnIGZbNjHEqcPbrPnTXsqLGEknirms0=",
         "owner": "input-output-hk",
         "repo": "bitte-cells",
-        "rev": "c252e256718cf88f880aa967d1e468f909fb280d",
+        "rev": "1e25a622ed4fd0ec05a08ca5fdebf70ff5f44df2",
         "type": "github"
       },
       "original": {
         "owner": "input-output-hk",
+        "ref": "patroni-flex",
         "repo": "bitte-cells",
         "type": "github"
       }

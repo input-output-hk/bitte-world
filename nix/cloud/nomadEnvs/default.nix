@@ -28,7 +28,12 @@ in {
         }
       ];
       job.database.group.database.task.patroni.resources = {inherit (patroniMods.resources) cpu memory;};
-      job.database.group.database.task.patroni.env = {inherit WALG_S3_PREFIX;};
+      job.database.group.database.task.patroni.env = {
+        inherit WALG_S3_PREFIX;
+        WALG_RESTORE_RETRIES = "3";
+        WALG_RESTORE_THRESHOLD_MEGABYTES = "1";
+        WALG_RESTORE_THRESHOLD_PERCENTAGE = "2";
+      };
       job.database.group.database.task.backup-walg.env = {inherit WALG_S3_PREFIX;};
     };
 
