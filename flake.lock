@@ -5310,15 +5310,16 @@
         "zitiConsole": "zitiConsole"
       },
       "locked": {
-        "lastModified": 1677863333,
-        "narHash": "sha256-Cyc1oUExHgWkK24o3dplhtcxybaUaNCiEajZ3FQ2SCs=",
+        "lastModified": 1685118587,
+        "narHash": "sha256-lvxcIRMAg4cUHeAxCrPTFKEfxw9FuYjDv2PA6zCDdyE=",
         "owner": "johnalotoski",
         "repo": "openziti-bins",
-        "rev": "481266eb40d0276ec35516f659f5b53513693256",
+        "rev": "fb327d8460c505ac1014fd52092079fb294d0874",
         "type": "github"
       },
       "original": {
         "owner": "johnalotoski",
+        "ref": "large-tcp",
         "repo": "openziti-bins",
         "type": "github"
       }

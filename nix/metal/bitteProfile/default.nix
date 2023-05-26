@@ -36,7 +36,7 @@ in {
           {
             # Matches the equinix assigned project private IP block
             gatewayCoreNodeName = "zt";
-            cidrRange = "10.12.100.0/25";
+            cidrRange = "10.12.0.0/16";
           }
           {
             # Extends ziti DNS over CGNAT block
@@ -114,7 +114,7 @@ in {
         lib.listToAttrs (lib.forEach [
             (mkAsgs "eu-central-1" 2 "t3a.medium" 100 "infra" "infra" {withPatroni = true;} {})
             # (mkAsgs "eu-central-1" 1 "t3a.small" 100 "test" "test" {} {})
-            # (mkAsgs "us-east-2" 1 "t3a.small" 100 "test" "test" {} {})
+            (mkAsgs "us-east-2" 1 "t3a.small" 100 "test" "test" {} {})
             # (mkAsgs "eu-west-1" 1 "t3a.small" 100 "test" "test" {} {})
           ]
           (args: let
@@ -331,6 +331,7 @@ in {
                 ziti-edge-tunnel = {
                   enable = true;
                   dnsUpstream = null;
+                  package = self.inputs.openziti.packages.${pkgs.system}.ziti-edge-tunnel_latest_large_tcp;
                 };
 
                 ziti-console.enable = true;
